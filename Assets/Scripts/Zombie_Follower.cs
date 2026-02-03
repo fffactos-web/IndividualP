@@ -22,6 +22,27 @@ public class Zombie_Follower : MonoBehaviour
         InvokeRepeating(nameof(GoToPlayer), 0f, 0.5f);
     }
 
+    void OnEnable()
+    {
+        if (agent == null)
+            agent = GetComponentInParent<NavMeshAgent>();
+        if (animator == null)
+            animator = GetComponent<Animator>();
+
+        if (agent != null)
+        {
+            agent.isStopped = false;
+            agent.ResetPath();
+        }
+
+        if (animator != null)
+        {
+            animator.Rebind();
+            animator.Update(0f);
+            animator.SetBool("isAttacking", false);
+        }
+    }
+
     void GoToPlayer()
     {
         if (player == null) return;

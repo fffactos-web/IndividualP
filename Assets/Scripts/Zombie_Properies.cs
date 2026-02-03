@@ -14,14 +14,18 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     public MobSpawner spawner;
     public GameObject dieEffect;
 
-    Quaternion rot;
+    Quaternion initialRotation;
+
+    void Awake()
+    {
+        initialRotation = transform.rotation;
+    }
 
     // ===== POOL =====
 
     public void OnSpawn()
     {
         ResetProperties();
-        rot = transform.rotation;
         damagePopup = null;
         lastDamageTime = 0f;
     }
@@ -41,7 +45,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     void ResetProperties()
     {
         currentHealth = maxHealth;
-        transform.rotation = rot; 
+        transform.rotation = initialRotation;
     }
 
     public void GetDamage(float damage)

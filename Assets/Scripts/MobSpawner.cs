@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.UIElements;
 
 public class MobSpawner : MonoBehaviour
@@ -20,11 +21,34 @@ public class MobSpawner : MonoBehaviour
         {
             RaycastHit hit;
             Ray ray = new Ray(transform.position, -transform.up);
-            Physics.Raycast(ray, out hit, 100000000f);
-            PoolManager.I.followerZombiePool.Spawn(
-                hit.point + new Vector3(0, 5f, 0),
+            Vector3 spawnPoint = transform.position;
+            if (Physics.Raycast(ray, out hit, 100000000f))
+            {
+                spawnPoint = hit.point;
+            }
+
+            if (NavMesh.SamplePosition(spawnPoint, out NavMeshHit navHit, 10f, NavMesh.AllAreas))
+            {
+                spawnPoint = navHit.position;
+            }
+
+            GameObject spawned = PoolManager.I.followerZombiePool.Spawn(
+                spawnPoint,
                 Quaternion.identity
             );
+
+            if (spawned.TryGetComponent(out NavMeshAgent agent))
+            {
+                agent.Warp(spawnPoint + Vector3.up * agent.baseOffset);
+                agent.isStopped = false;
+                agent.ResetPath();
+            }
+            else if (spawned.TryGetComponentInChildren(out agent))
+            {
+                agent.Warp(spawnPoint + Vector3.up * agent.baseOffset);
+                agent.isStopped = false;
+                agent.ResetPath();
+            }
         }
     }
 }
