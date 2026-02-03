@@ -43,11 +43,15 @@ public class MobSpawner : MonoBehaviour
                 agent.isStopped = false;
                 agent.ResetPath();
             }
-            else if (spawned.TryGetComponentInChildren(out agent))
+            else
             {
-                agent.Warp(spawnPoint + Vector3.up * agent.baseOffset);
-                agent.isStopped = false;
-                agent.ResetPath();
+                agent = spawned.GetComponentInChildren<NavMeshAgent>();
+                if (agent != null)
+                {
+                    agent.Warp(spawnPoint + Vector3.up * agent.baseOffset);
+                    agent.isStopped = false;
+                    agent.ResetPath();
+                }
             }
         }
     }
