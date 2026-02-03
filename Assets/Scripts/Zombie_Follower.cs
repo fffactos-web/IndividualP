@@ -36,7 +36,11 @@ public class Zombie_Follower : MonoBehaviour
         }
 
         if (animator != null)
+        {
+            animator.Rebind();
+            animator.Update(0f);
             animator.SetBool("isAttacking", false);
+        }
     }
 
     void GoToPlayer()
