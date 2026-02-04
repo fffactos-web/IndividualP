@@ -57,14 +57,10 @@ public class Gun : MonoBehaviour
         LayerMask uiMask = LayerMask.GetMask("UI");
         if (uiMask != 0)
             hitMask &= ~uiMask;
-        Vector2 screenPoint =
-            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
+    }
 
-        Ray camRay = Camera.main.ScreenPointToRay(screenPoint);
-        if (Physics.Raycast(camRay, out RaycastHit hit, 10000f, hitMask, QueryTriggerInteraction.Ignore))
-
-            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
-        RaycastHit[] hits = Physics.RaycastAll(camRay, 10000f, hitMask, QueryTriggerInteraction.Ignore);
+    private void Update()
+    {
         if (Input.GetMouseButton(0) && CanShoot())
         {
             switch (modifiers)
@@ -96,8 +92,10 @@ public class Gun : MonoBehaviour
         PoolManager.I.shotEffectPool
             .Spawn(firePoint.position, firePoint.rotation);
 
-        Ray camRay = Camera.main.ScreenPointToRay(crosshair.position);
-        if (Physics.Raycast(camRay, out RaycastHit hit, 10000f))
+        Vector2 screenPoint =
+            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
+        Ray camRay = Camera.main.ScreenPointToRay(screenPoint);
+        if (Physics.Raycast(camRay, out RaycastHit hit, 10000f, hitMask, QueryTriggerInteraction.Ignore))
         {
             if (hit.collider.TryGetComponent(out Zombie_Head head))
             {
@@ -123,11 +121,10 @@ public class Gun : MonoBehaviour
             .Spawn(firePoint.position, firePoint.rotation);
 
         Vector2 screenPoint =
-            RectTransformUtility.WorldToScreenPoint(null, crosshair.position);
-
+            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
         Ray ray = Camera.main.ScreenPointToRay(screenPoint);
 
-        RaycastHit[] hits = Physics.RaycastAll(ray, 10000f);
+        RaycastHit[] hits = Physics.RaycastAll(ray, 10000f, hitMask, QueryTriggerInteraction.Ignore);
 
         Vector3 endPoint =
             firePoint.position + ray.direction * 60f; // åñëè ïóñòî
