@@ -26,6 +26,9 @@ public class Gun : MonoBehaviour
     [SerializeField] float pierceVisualTime = 0.07f;
     Tween pierceTween;
 
+    [Header("Raycast")]
+    [SerializeField] LayerMask hitMask = ~0;
+
     RectTransform crosshair;
     Slider visualCooldown;
     Tween cooldownTween;
@@ -50,11 +53,18 @@ public class Gun : MonoBehaviour
 
         visualCooldown.minValue = 0f;
         visualCooldown.maxValue = 1f;
-        visualCooldown.value = 1f; // оружие готово сразу
-    }
 
-    private void Update()
-    {
+        LayerMask uiMask = LayerMask.GetMask("UI");
+        if (uiMask != 0)
+            hitMask &= ~uiMask;
+        Vector2 screenPoint =
+            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
+
+        Ray camRay = Camera.main.ScreenPointToRay(screenPoint);
+        if (Physics.Raycast(camRay, out RaycastHit hit, 10000f, hitMask, QueryTriggerInteraction.Ignore))
+
+            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
+        RaycastHit[] hits = Physics.RaycastAll(ray, 10000f, hitMask, QueryTriggerInteraction.Ignore);
         if (Input.GetMouseButton(0) && CanShoot())
         {
             switch (modifiers)
@@ -120,7 +130,7 @@ public class Gun : MonoBehaviour
         RaycastHit[] hits = Physics.RaycastAll(ray, 10000f);
 
         Vector3 endPoint =
-            firePoint.position + ray.direction * 60f; // если пусто
+            firePoint.position + ray.direction * 60f; // ГҐГ±Г«ГЁ ГЇГіГ±ГІГ®
 
         if (hits.Length > 0)
         {
