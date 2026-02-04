@@ -1,5 +1,9 @@
 using UnityEngine;
 using UnityEngine.AI;
+<<<<<<< Updated upstream
+=======
+using UnityEngine.UIElements;
+>>>>>>> Stashed changes
 
 public class MobSpawner : MonoBehaviour
 {
@@ -26,11 +30,29 @@ public class MobSpawner : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
+<<<<<<< Updated upstream
             if (!TryGetSpawnPoint(out Vector3 spawnPoint))
                 continue;
 
             GameObject spawned = PoolManager.I.followerZombiePool.Spawn(
                 spawnPoint,
+=======
+            RaycastHit hit;
+            Ray ray = new Ray(transform.position, -transform.up);
+            Vector3 spawnPoint = transform.position;
+            if (Physics.Raycast(ray, out hit, 100000000f))
+            {
+                spawnPoint = hit.point;
+            }
+
+            if (NavMesh.SamplePosition(spawnPoint, out NavMeshHit navHit, 5f, NavMesh.AllAreas))
+            {
+                spawnPoint = navHit.position;
+            }
+
+            PoolManager.I.followerZombiePool.Spawn(
+                spawnPoint + new Vector3(0, 0.1f, 0),
+>>>>>>> Stashed changes
                 Quaternion.identity
             );
 
@@ -48,6 +70,7 @@ public class MobSpawner : MonoBehaviour
             }
         }
     }
+<<<<<<< Updated upstream
 
     static void SnapAgentToNavMesh(NavMeshAgent agent, Vector3 pointOnNavMesh)
     {
@@ -104,3 +127,6 @@ public class MobSpawner : MonoBehaviour
         return false;
     }
 }
+=======
+}
+>>>>>>> Stashed changes
