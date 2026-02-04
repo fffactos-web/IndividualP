@@ -97,14 +97,16 @@ public class Gun : MonoBehaviour
         Ray camRay = Camera.main.ScreenPointToRay(screenPoint);
         if (Physics.Raycast(camRay, out RaycastHit hit, 10000f, hitMask, QueryTriggerInteraction.Ignore))
         {
-            if (hit.collider.TryGetComponent(out Zombie_Head head))
+            Zombie_Head head = hit.collider.GetComponentInParent<Zombie_Head>();
+            Zombie_Properies zombie = hit.collider.GetComponentInParent<Zombie_Properies>();
+            if (head != null)
             {
                 if (head.zombieProperies.currentHealth - dmg * dmgMultiplier * critDmgMultiplier > 0)
                     head.zombieProperies.GetDamage(dmg * dmgMultiplier * critDmgMultiplier);
                 else
                     head.zombieProperies.GetDamage(head.zombieProperies.currentHealth);
             }
-            else if (hit.collider.TryGetComponent(out Zombie_Properies zombie))
+            else if (zombie != null)
             {
                 if (zombie.currentHealth - dmg * dmgMultiplier > 0)
                     zombie.GetDamage(dmg * dmgMultiplier);
@@ -137,11 +139,13 @@ public class Gun : MonoBehaviour
 
             foreach (var hit in hits)
             {
-                if (hit.collider.TryGetComponent(out Zombie_Head head))
+                Zombie_Head head = hit.collider.GetComponentInParent<Zombie_Head>();
+                Zombie_Properies zombie = hit.collider.GetComponentInParent<Zombie_Properies>();
+                if (head != null)
                 {
                     DealDamage(head.zombieProperies, currentDamage * critDmgMultiplier);
                 }
-                else if (hit.collider.TryGetComponent(out Zombie_Properies zombie))
+                else if (zombie != null)
                 {
                     DealDamage(zombie, currentDamage);
                 }
