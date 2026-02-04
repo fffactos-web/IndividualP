@@ -16,6 +16,11 @@ public class DiePanel : MonoBehaviour
 
     public void Restart()
     {
+        SceneManager.LoadScene(1);
+    }
+
+    public void ExitToMenu()
+    {
         SceneManager.LoadScene(0);
     }
 

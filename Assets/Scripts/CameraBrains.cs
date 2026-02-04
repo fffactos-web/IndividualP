@@ -22,7 +22,7 @@ public class CameraBrains : MonoBehaviour
     RectTransform rect;
     Movement movement;
 
-    void Start()
+    void Awake()
     {
         cam = GetComponent<CinemachineVirtualCamera>();
         character = GameObject.FindGameObjectWithTag("Character");
@@ -60,7 +60,8 @@ public class CameraBrains : MonoBehaviour
                 character.SetActive(false);
                 isOn = false;
                 foreach (var bar in healthBars)
-                    bar.SetActive(false);
+                    if (bar != null)
+                        bar.SetActive(false);
                 
             }
             else
@@ -73,7 +74,8 @@ public class CameraBrains : MonoBehaviour
                 character.SetActive(true);
                 isOn = true;
                 foreach (var bar in healthBars)
-                    bar.SetActive(true);
+                    if(bar != null)
+                        bar.SetActive(true);
                 animator.SetBool("Run", movement.isRunning);
                 animator.SetBool("Jump", movement.inAir);
                 animator.SetBool("Fire", movement.isFiring); 

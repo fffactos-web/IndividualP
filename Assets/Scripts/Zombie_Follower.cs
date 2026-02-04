@@ -12,14 +12,8 @@ public class Zombie_Follower : MonoBehaviour
 
     void Start()
     {
-        agent = GetComponentInParent<NavMeshAgent>();
-        animator = GetComponent<Animator>();
-
-        GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null)
-            player = p.transform;
-
-        InvokeRepeating(nameof(GoToPlayer), 0f, 0.5f);
+        if (!IsInvoking(nameof(GoToPlayer)))
+            InvokeRepeating(nameof(GoToPlayer), 0f, 0.5f);
     }
 
     void OnEnable()
@@ -28,6 +22,8 @@ public class Zombie_Follower : MonoBehaviour
             agent = GetComponentInParent<NavMeshAgent>();
         if (animator == null)
             animator = GetComponent<Animator>();
+        if (player == null)
+            player = ResolvePlayerTransform();
 
         if (agent != null)
         {
@@ -41,10 +37,20 @@ public class Zombie_Follower : MonoBehaviour
             animator.Update(0f);
             animator.SetBool("isAttacking", false);
         }
+
+        if (!IsInvoking(nameof(GoToPlayer)))
+            InvokeRepeating(nameof(GoToPlayer), 0f, 0.5f);
+    }
+
+    void OnDisable()
+    {
+        CancelInvoke(nameof(GoToPlayer));
     }
 
     void GoToPlayer()
     {
+        if (player == null)
+            player = ResolvePlayerTransform();
         if (player == null) return;
         if (agent == null) return;
         if (!agent.isOnNavMesh) return;
@@ -55,12 +61,14 @@ public class Zombie_Follower : MonoBehaviour
         {
             agent.isStopped = false;
             agent.SetDestination(player.position);
-            animator.SetBool("isAttacking", false);
+            if (animator != null)
+                animator.SetBool("isAttacking", false);
         }
         else
         {
             agent.isStopped = true;
-            animator.SetBool("isAttacking", true);
+            if (animator != null)
+                animator.SetBool("isAttacking", true);
         }
     }
 
@@ -72,8 +80,34 @@ public class Zombie_Follower : MonoBehaviour
         if (Vector3.Distance(player.position, transform.position) <= attackDistance)
         {
             var hp = player.GetComponent<Character_Properties>();
+            if (hp == null)
+                hp = player.GetComponentInChildren<Character_Properties>();
             if (hp != null)
                 hp.GetDamage(damage);
         }
+    }
+
+    Transform ResolvePlayerTransform()
+    {
+        GameObject p = GameObject.FindGameObjectWithTag("Player");
+        if (p != null)
+            return p.transform;
+
+        // Fallback: in this project player isn't always tagged as "Player".
+        // Character_Properties exists only on the player.
+        var props = FindAnyCharacterProperties();
+        if (props != null)
+            return props.transform;
+
+        return null;
+    }
+
+    static Character_Properties FindAnyCharacterProperties()
+    {
+#if UNITY_2023_1_OR_NEWER
+        return Object.FindFirstObjectByType<Character_Properties>();
+#else
+        return Object.FindObjectOfType<Character_Properties>();
+#endif
     }
 }

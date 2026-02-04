@@ -8,6 +8,7 @@ public class Character_Properties : MonoBehaviour
     [SerializeField]
     GameObject[] guns;
 
+    [SerializeField]
     DiePanel diePanel;
 
     [SerializeField]
@@ -16,7 +17,9 @@ public class Character_Properties : MonoBehaviour
     [SerializeField]
     UnityEngine.UI.Slider[] healthBarForeground;
 
+    [SerializeField]
     Transform gunHolder;
+    [SerializeField]
     Transform camGunHolder;
 
     public float maxHealth;
@@ -36,6 +39,10 @@ public class Character_Properties : MonoBehaviour
     bool healthChanged;
     float timeWithoutHealthChanhges = 0f;
 
+    public float difficulty = 1;
+    public float kills;
+    public float gems;
+
     public enum property
     {
         dmgMultiplier,
@@ -48,18 +55,14 @@ public class Character_Properties : MonoBehaviour
         runSpeedMultiplier
     }
 
-    private void Start()
+    private void Awake()
     {
-        gunHolder = GameObject.FindGameObjectWithTag("Gun").transform;
-        camGunHolder = GameObject.FindGameObjectWithTag("Camera Gun").transform;
-
         Instantiate(guns[0], camGunHolder);
         Instantiate(guns[0], gunHolder);
 
         ResetProperties();
         ChangeGunProperties();
 
-        diePanel = GameObject.FindGameObjectWithTag("DiePanel").GetComponent<DiePanel>();
         diePanel.gameObject.SetActive(false);
 
         foreach (var bar in healthBars)

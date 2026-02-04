@@ -22,7 +22,7 @@ public class ObjectPool : MonoBehaviour
         GameObject obj = Instantiate(prefab);
         obj.SetActive(false);
 
-        if (obj.TryGetComponent(out AutoReturnToPool auto))
+        foreach (var auto in obj.GetComponentsInChildren<AutoReturnToPool>(true))
             auto.Init(this);
 
         pool.Enqueue(obj);
@@ -43,7 +43,9 @@ public class ObjectPool : MonoBehaviour
         obj.transform.SetPositionAndRotation(pos, rot);
         obj.SetActive(true);
 
-        if (obj.TryGetComponent(out IPoolable p))
+        // A pooled prefab can have poolable logic on children (common with imported rigs).
+        // Calling only TryGetComponent on root would miss those components.
+        foreach (var p in obj.GetComponentsInChildren<IPoolable>(true))
             p.OnSpawn();
 
         return obj;
@@ -52,7 +54,7 @@ public class ObjectPool : MonoBehaviour
 
     public void Despawn(GameObject obj)
     {
-        if (obj.TryGetComponent(out IPoolable p))
+        foreach (var p in obj.GetComponentsInChildren<IPoolable>(true))
             p.OnDespawn();
 
         obj.SetActive(false);

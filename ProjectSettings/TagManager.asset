@@ -16,6 +16,8 @@ TagManager:
   - DiePanel
   - Wave Bar
   - Difficulty Bar
+  - Gem Status
+  - Kills Status
   layers:
   - Default
   - TransparentFX

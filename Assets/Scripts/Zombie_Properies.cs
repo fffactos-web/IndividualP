@@ -1,4 +1,8 @@
+using System;
+using TMPro;
+using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 
 public class Zombie_Properies : MonoBehaviour, IPoolable
 {
@@ -14,11 +18,21 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     public MobSpawner spawner;
     public GameObject dieEffect;
 
-    Quaternion initialRotation;
+    Quaternion initialLocalRotation;
+    Vector3 initialLocalPosition;
+
+    TextMeshProUGUI gemStatus;
+    TextMeshProUGUI killsStatus;
+
+    Character_Properties character;
 
     void Awake()
     {
-        initialRotation = transform.rotation;
+        gemStatus = GameObject.FindGameObjectWithTag("Gem Status").GetComponent<TextMeshProUGUI>();
+        killsStatus = GameObject.FindGameObjectWithTag("Kills Status").GetComponent<TextMeshProUGUI>();
+        character = GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>();
+        initialLocalRotation = transform.localRotation;
+        initialLocalPosition = transform.localPosition;
     }
 
     // ===== POOL =====
@@ -45,7 +59,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     void ResetProperties()
     {
         currentHealth = maxHealth;
-        transform.rotation = initialRotation;
+        transform.localRotation = initialLocalRotation;
+        transform.localPosition = initialLocalPosition;
     }
 
     public void GetDamage(float damage)
@@ -107,6 +122,12 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             damagePopup = null;
         }
 
+
+        character.kills++;
+        int gemPlus = Convert.ToInt32(UnityEngine.Random.Range(5, 20));
+        character.gems += gemPlus;
+        killsStatus.text = (character.kills + 1).ToString();
+        gemStatus.text = (character.gems + gemPlus).ToString();
         ResetProperties();
 
         PoolManager.I.deathEffectPool.Spawn(
@@ -114,7 +135,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             Quaternion.identity
         );
 
-        PoolManager.I.followerZombiePool.Despawn(gameObject);
+        // Zombie_Properies lives on a child of the pooled prefab. We must return the pooled root object.
+        PoolManager.I.followerZombiePool.Despawn(transform.root.gameObject);
     }
 
 }
