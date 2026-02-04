@@ -3967,6 +3967,7 @@ GameObject:
   - component: {fileID: 1594952854}
   - component: {fileID: 1594952856}
   - component: {fileID: 1594952855}
+  - component: {fileID: 1594952857}
   m_Layer: 0
   m_Name: Pool Manager
   m_TagString: Untagged
@@ -3988,8 +3989,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 6980259576133684760, guid: 1f58a1dea6bbd9347843e4935585e6a2, type: 3}
   preloadCount: 32
-  isUI: 0
-  uiParent: {fileID: 0}
 --- !u!114 &1594952849
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4004,8 +4003,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 6619888583678246521, guid: 210d0c243758d06449bcc22986db4763, type: 3}
   preloadCount: 30
-  isUI: 0
-  uiParent: {fileID: 0}
 --- !u!114 &1594952850
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4020,8 +4017,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 1471286593288920066, guid: 4747c63f2fe1cb447b632158eb70f843, type: 3}
   preloadCount: 32
-  isUI: 0
-  uiParent: {fileID: 0}
 --- !u!114 &1594952851
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4036,8 +4031,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
   preloadCount: 20
-  isUI: 0
-  uiParent: {fileID: 0}
 --- !u!114 &1594952852
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4057,6 +4050,7 @@ MonoBehaviour:
   pierceShotPool: {fileID: 1594952854}
   rocketsPool: {fileID: 1594952855}
   explosionPool: {fileID: 1594952856}
+  gemPool: {fileID: 1594952857}
 --- !u!4 &1594952853
 Transform:
   m_ObjectHideFlags: 0
@@ -4086,8 +4080,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 5009602498713735002, guid: f5c4083235a69fe4f97aafc0fbeefc3b, type: 3}
   preloadCount: 32
-  isUI: 0
-  uiParent: {fileID: 0}
 --- !u!114 &1594952855
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4102,8 +4094,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 6563645811248798392, guid: 2acdeb261156fc14dafd6ee782cfb816, type: 3}
   preloadCount: 32
-  isUI: 0
-  uiParent: {fileID: 0}
 --- !u!114 &1594952856
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4118,8 +4108,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 358637981425055526, guid: 8eb503696b886e04faff8fc0f480d473, type: 3}
   preloadCount: 32
-  isUI: 0
-  uiParent: {fileID: 0}
+--- !u!114 &1594952857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1594952847}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 812896cbf9ebeed4ab385f2956604bd9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefab: {fileID: 6414953239637031926, guid: 8c49b35febea4514b87b37f643064ed4, type: 3}
+  preloadCount: 32
 --- !u!1 &1610197660
 GameObject:
   m_ObjectHideFlags: 3
