@@ -1,8 +1,5 @@
-using System;
 using TMPro;
-using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.TextCore.Text;
 
 public class Zombie_Properies : MonoBehaviour, IPoolable
 {
@@ -17,18 +14,20 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     public MobSpawner spawner;
     public GameObject dieEffect;
+    TextMeshProUGUI killsStatus;
+    Character_Properties character;
 
     Quaternion initialLocalRotation;
     Vector3 initialLocalPosition;
 
-    TextMeshProUGUI gemStatus;
-    TextMeshProUGUI killsStatus;
+    [SerializeField] private int baseGemCount = 2;
+    [SerializeField] private int gemCountPerDifficulty = 2;
 
-    Character_Properties character;
+    [SerializeField] private float coneHeight = 1.2f;
+    [SerializeField] private float coneRadius = 1f;
 
     void Awake()
     {
-        gemStatus = GameObject.FindGameObjectWithTag("Gem Status").GetComponent<TextMeshProUGUI>();
         killsStatus = GameObject.FindGameObjectWithTag("Kills Status").GetComponent<TextMeshProUGUI>();
         character = GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>();
         initialLocalRotation = transform.localRotation;
@@ -122,12 +121,10 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             damagePopup = null;
         }
 
+        SpawnGems();
 
         character.kills++;
-        int gemPlus = Convert.ToInt32(UnityEngine.Random.Range(5, 20));
-        character.gems += gemPlus;
         killsStatus.text = (character.kills + 1).ToString();
-        gemStatus.text = (character.gems + gemPlus).ToString();
         ResetProperties();
 
         PoolManager.I.deathEffectPool.Spawn(
@@ -138,5 +135,26 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         // Zombie_Properies lives on a child of the pooled prefab. We must return the pooled root object.
         PoolManager.I.followerZombiePool.Despawn(transform.root.gameObject);
     }
+
+    void SpawnGems()
+    {
+        int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
+
+        for (int i = 0; i < gemCount; i++)
+        {
+            float angle = Random.Range(0f, Mathf.PI * 2f);
+            float radius = Random.Range(0f, coneRadius);
+            float height = Random.Range(0.3f, coneHeight);
+
+            Vector3 offset = new Vector3(
+                Mathf.Cos(angle) * radius,
+                height,
+                Mathf.Sin(angle) * radius
+            );
+
+            PoolManager.I.gemPool.Spawn(transform.position + offset,Quaternion.identity);
+        }
+    }
+
 
 }

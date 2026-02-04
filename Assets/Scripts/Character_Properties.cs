@@ -1,7 +1,10 @@
 using DG.Tweening;
+using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 
-public class Character_Properties : MonoBehaviour
+public class Character_Properties : MonoBehaviour, IGemCollector
 {
     [SerializeField]
     GameObject[] dieEffect;
@@ -36,6 +39,8 @@ public class Character_Properties : MonoBehaviour
 
     float currentHealth;
 
+    TextMeshProUGUI gemStatus;
+
     bool healthChanged;
     float timeWithoutHealthChanhges = 0f;
 
@@ -64,6 +69,7 @@ public class Character_Properties : MonoBehaviour
         ChangeGunProperties();
 
         diePanel.gameObject.SetActive(false);
+        gemStatus = GameObject.FindGameObjectWithTag("Gem Status").GetComponent<TextMeshProUGUI>();
 
         foreach (var bar in healthBars)
         {
@@ -142,6 +148,14 @@ public class Character_Properties : MonoBehaviour
                 timeWithoutHealthChanhges = 0f;
             }
         }
+    }
+
+    public void AddGems(int amount)
+    {
+        gems += amount; 
+        int gemPlus = Convert.ToInt32(UnityEngine.Random.Range(5, 20));
+        gems += gemPlus;
+        gemStatus.text = (gems + gemPlus).ToString();
     }
 
     public void GetDamage(float damage)

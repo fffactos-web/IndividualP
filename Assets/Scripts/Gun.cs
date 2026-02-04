@@ -64,7 +64,7 @@ public class Gun : MonoBehaviour
         if (Physics.Raycast(camRay, out RaycastHit hit, 10000f, hitMask, QueryTriggerInteraction.Ignore))
 
             RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
-        RaycastHit[] hits = Physics.RaycastAll(ray, 10000f, hitMask, QueryTriggerInteraction.Ignore);
+        RaycastHit[] hits = Physics.RaycastAll(camRay, 10000f, hitMask, QueryTriggerInteraction.Ignore);
         if (Input.GetMouseButton(0) && CanShoot())
         {
             switch (modifiers)

@@ -6,9 +6,6 @@ public class ObjectPool : MonoBehaviour
     [SerializeField] GameObject prefab;
     [SerializeField] int preloadCount = 32;
 
-    [SerializeField] bool isUI;
-    [SerializeField] Transform uiParent;
-
     Queue<GameObject> pool = new Queue<GameObject>();
 
     void Awake()
@@ -35,16 +32,11 @@ public class ObjectPool : MonoBehaviour
 
         GameObject obj = pool.Dequeue();
 
-        if (isUI)
-            obj.transform.SetParent(uiParent, false);
-        else
-            obj.transform.SetParent(null);
+        obj.transform.SetParent(null);
 
         obj.transform.SetPositionAndRotation(pos, rot);
         obj.SetActive(true);
 
-        // A pooled prefab can have poolable logic on children (common with imported rigs).
-        // Calling only TryGetComponent on root would miss those components.
         foreach (var p in obj.GetComponentsInChildren<IPoolable>(true))
             p.OnSpawn();
 

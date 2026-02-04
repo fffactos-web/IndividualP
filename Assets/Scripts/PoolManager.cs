@@ -8,9 +8,10 @@ public class PoolManager : MonoBehaviour
     public ObjectPool deathEffectPool;
     public ObjectPool shotEffectPool;
     public ObjectPool popupPool;
-    public ObjectPool pierceShotPool;
+    public ObjectPool pierceShotPool; 
     public ObjectPool rocketsPool;
     public ObjectPool explosionPool;
+    public ObjectPool gemPool;
 
     void Awake()
     {
