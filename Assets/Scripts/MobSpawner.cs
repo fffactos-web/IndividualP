@@ -1,7 +1,10 @@
 using UnityEngine;
 using UnityEngine.AI;
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 using UnityEngine.UIElements;
 >>>>>>> Stashed changes
 
@@ -52,6 +55,9 @@ public class MobSpawner : MonoBehaviour
 
             PoolManager.I.followerZombiePool.Spawn(
                 spawnPoint + new Vector3(0, 0.1f, 0),
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 Quaternion.identity
             );
@@ -70,6 +76,7 @@ public class MobSpawner : MonoBehaviour
             }
         }
     }
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 
     static void SnapAgentToNavMesh(NavMeshAgent agent, Vector3 pointOnNavMesh)
@@ -127,6 +134,9 @@ public class MobSpawner : MonoBehaviour
         return false;
     }
 }
+=======
+}
+>>>>>>> Stashed changes
 =======
 }
 >>>>>>> Stashed changes
