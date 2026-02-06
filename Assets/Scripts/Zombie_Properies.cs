@@ -44,15 +44,24 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         currentHealth = maxHealth;
     }
 
-    public void ApplyDot(int effectKey, float dps, float duration, float tickInterval, Character_Properties source, Poison.StackingMode stackingMode)
-    {
-        if (dps <= 0f || duration <= 0f) return;
+    public void ApplyDot(int effectKey, float dps, float duration, float tickInterval, Character_Properties source, PoisonOnHitAction.StackingMode stackingMode)
+        if (stackingMode == PoisonOnHitAction.StackingMode.Refresh)
+        else if (stackingMode == PoisonOnHitAction.StackingMode.Ignore)
+    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false, Character_Properties source = null)
+        bool wasAlive = currentHealth > 0f;
+        float healthBeforeHit = currentHealth;
+        Vector3 hitPosition = transform.position;
 
-        if (tickInterval <= 0f) tickInterval = 0.1f;
-        if (tickInterval > duration) tickInterval = duration;
+
+            hitLayer = gameObject.layer,
+            targetWasKilled = wasAlive && healthBeforeHit - damage <= 0f,
+            hitPosition = hitPosition
+            ProcManager.Instance.QueueProc(this, weaponEffect, ctx, source);
+            ProcManager.Instance.QueueProc(this, WrapEntries(character.activeEffects), ctx, character);
 
         if (stackingMode == Poison.StackingMode.Refresh)
         {
+            // åñëè óæå åñòü — ïåðåçàïóñêàåì êîðóòèíó (îáíîâëÿåì äëèòåëüíîñòü)
             if (activeDots.TryGetValue(effectKey, out Coroutine existing))
             {
                 StopCoroutine(existing);
@@ -78,21 +87,27 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     IEnumerator DotCoroutine(int key, float dps, float duration, float tickInterval, Character_Properties source)
     {
         float remaining = duration;
+        // óðîí â êàæäîì òèêå
         float dmgPerTick = dps * tickInterval;
 
         while (remaining > 0f && !isDead)
         {
-            TakeDamage(dmgPerTick, null, false, source, ProcDamageType.DoT);
+            // íàíîñÿ óðîí, èñïîëüçóåì âíóòðåííèé âûçîâ, ÷òîáû íå ñòàâèòü íîâûå proc'û è íå ââîäèòü ðåêóðñèþ
+            InternalApplyDamage(dmgPerTick);
 
             remaining -= tickInterval;
             if (remaining <= 0f) break;
             yield return new WaitForSeconds(tickInterval);
         }
 
+        // óäàëÿåì çàïèñü
         activeDots.Remove(key);
     }
 
-    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false, Character_Properties attacker = null, ProcDamageType damageType = ProcDamageType.Direct)
+
+    // Ýòîò ìåòîä äîëæåí âûçûâàòüñÿ êîãäà íàíîñèòñÿ óðîí èçâíå (íàïðèìåð èç Gun.cs)
+    // source — weaponEffect — EffectData îò îðóæèÿ (åñëè åñòü)
+    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false)
     {
         if (isDead || damage <= 0f) return;
 
@@ -116,9 +131,12 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             damageType = damageType
         };
 
-        ShowDamage(finalDamage);
+        // ýôôåêòû îðóæèÿ
+        if (weaponEffect != null)
+            ProcManager.Instance.QueueProc(this, weaponEffect, ctx);
 
-        if (weaponEffect != null && ProcManager.Instance != null)
+        // ýôôåêòû ïåðñîíàæà (ÂÎÒ ÎÍÈ!)
+        if (character != null && character.activeEffects != null && character.activeEffects.Count > 0)
         {
             ProcManager.Instance.QueueProc(attacker, this, weaponEffect, ctx, EffectTriggerType.OnHit);
             if (didKill)
@@ -147,9 +165,17 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         return data;
     }
 
+
+    // Âíóòðåííåå ïðèìåíåíèå çäîðîâüÿ — íåáîëüøàÿ âûäåëåííàÿ ôóíêöèÿ, ÷òîáû EffectAction ìîã íàïðÿìóþ íàíåñòè äîï. óðîí
     public void InternalApplyDamage(float damage)
     {
-        TakeDamage(damage, null, false, null, ProcDamageType.Proc);
+        currentHealth -= damage;
+        // òóò ìîæåøü äîáàâèòü âñïëûâàþùóþ íàäïèñü óðîíà, çâóê, àíèìàöèþ
+        if (currentHealth <= 0f)
+        {
+            Die();
+        }
+        ShowDamage(damage);
     }
 
     public void OnSpawn()

@@ -20,7 +20,7 @@ public class ProcManager : MonoBehaviour
     List<ProcEvent> queue = new List<ProcEvent>(256);
     Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
 
-    [Tooltip("Max processed procs per frame")]
+    [Tooltip("Max procs processed per frame")]
     public int maxProcessPerFrame = 128;
 
         queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
@@ -44,29 +44,15 @@ public class ProcManager : MonoBehaviour
 
     void ProcessEvent(ref ProcEvent ev)
     {
-        if (ev.target == null) return;
+        if (ev.effects == null || ev.effects.entries == null) return;
 
-        IReadOnlyList<EffectEntry> entries = GetEntries(ev);
-        if (entries == null || entries.Count == 0) return;
+        int targetId = ev.target != null ? ev.target.GetInstanceID() : 0;
 
-        float[] timers = GetTimers(ev.target.GetInstanceID(), ev.entriesKey, entries.Count);
-        ProcessEntries(entries, timers, ref ev);
-    }
-
-    IReadOnlyList<EffectEntry> GetEntries(in ProcEvent ev)
-    {
-        if (ev.effects != null && ev.effects.entries != null)
-            return ev.effects.entries;
-
-        return ev.runtimeEntries;
-    }
-
-    float[] GetTimers(int targetId, int entriesKey, int requiredLength)
-    {
-        if (!lastTriggerTime.TryGetValue(targetId, out var timersByEntries))
+        if (!lastTriggerTime.TryGetValue(targetId, out float[] timers))
         {
-            timersByEntries = new Dictionary<int, float[]>();
-            lastTriggerTime[targetId] = timersByEntries;
+            timers = new float[ev.effects.entries.Length];
+            for (int k = 0; k < timers.Length; k++) timers[k] = -9999f;
+            lastTriggerTime[targetId] = timers;
         }
 
         int targetId = ev.target.GetInstanceID();
@@ -111,15 +97,24 @@ public class ProcManager : MonoBehaviour
                 lastTriggerTimeByKey[cooldownKey] = Time.time;
             }
 
+            if (!entry.action.CanExecute(ev.source, ev.target, ev.ctx))
+                continue;
+
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
-    public void QueueProc(Character_Properties source, Zombie_Properies target, EffectData effects, ProcContext ctx, EffectTriggerType triggerType)
+    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx, Character_Properties source = null)
     {
-        if (effects == null || target == null) return;
+        if (effects == null) return;
         if (queue.Count > 20000) return;
 
-        queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx, triggerType = triggerType });
+        queue.Add(new ProcEvent
+        {
+            source = source,
+            target = target,
+            effects = effects,
+            ctx = ctx
+        });
     }
 }
