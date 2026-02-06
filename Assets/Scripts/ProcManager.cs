@@ -13,14 +13,39 @@ public class ProcManager : MonoBehaviour
         public ProcContext ctx;
     }
 
-    // очередь без посто€нно создаваемых объектов: List<ProcEvent> хранит struct'ы
-    List<ProcEvent> queue = new List<ProcEvent>(256);
+    readonly List<ProcEvent> queue = new List<ProcEvent>(256);
 
-    // дл€ cooldown'ов: (targetInstanceId -> entryIndex -> lastTime)
-    Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
+    // targetInstanceId -> entryIndex -> lastTime
+    readonly Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
 
-    [Tooltip("ћакс. procs обработать за кадр")]
+    // Frame guard against duplicate queueing of the exact same event in the same frame.
+    readonly HashSet<ProcEventKey> queuedThisFrame = new HashSet<ProcEventKey>();
+    int guardedFrame = -1;
+
+    [Tooltip("Max amount of procs processed per frame")]
     public int maxProcessPerFrame = 128;
+
+    readonly struct ProcEventKey
+    {
+        public readonly int frame;
+        public readonly int targetId;
+        public readonly int effectsId;
+        public readonly ProcTrigger trigger;
+        public readonly int damageBits;
+        public readonly bool isCrit;
+        public readonly int hitLayer;
+
+        public ProcEventKey(int frame, int targetId, int effectsId, ProcContext ctx)
+        {
+            this.frame = frame;
+            this.targetId = targetId;
+            this.effectsId = effectsId;
+            trigger = ctx.trigger;
+            damageBits = System.BitConverter.SingleToInt32Bits(ctx.damageDone);
+            isCrit = ctx.isCrit;
+            hitLayer = ctx.hitLayer;
+        }
+    }
 
     void Awake()
     {
@@ -30,13 +55,21 @@ public class ProcManager : MonoBehaviour
 
     void Update()
     {
+        if (guardedFrame != Time.frameCount)
+        {
+            queuedThisFrame.Clear();
+            guardedFrame = Time.frameCount;
+        }
+
         if (queue.Count == 0) return;
+
         int toProcess = Mathf.Min(maxProcessPerFrame, queue.Count);
         for (int i = 0; i < toProcess; i++)
         {
             var ev = queue[i];
             ProcessEvent(ref ev);
         }
+
         if (toProcess > 0) queue.RemoveRange(0, toProcess);
     }
 
@@ -49,23 +82,23 @@ public class ProcManager : MonoBehaviour
         if (!lastTriggerTime.TryGetValue(targetId, out float[] timers))
         {
             timers = new float[ev.effects.entries.Length];
-            for (int k = 0; k < timers.Length; k++)
-                timers[k] = -9999f;
-
+            for (int i = 0; i < timers.Length; i++) timers[i] = -9999f;
             lastTriggerTime[targetId] = timers;
         }
 
         for (int i = 0; i < ev.effects.entries.Length; i++)
         {
             var entry = ev.effects.entries[i];
-            if (entry.action == null) continue;
+            if (entry == null || entry.action == null) continue;
+
+            // Unified order: trigger filter -> chance -> cooldown -> execute.
+            if (entry.trigger != ProcTrigger.Any && entry.trigger != ev.ctx.trigger) continue;
             if (Random.value > entry.procChance) continue;
 
             if (entry.cooldownSeconds > 0f)
             {
                 if (i >= timers.Length)
                 {
-                    // если мен€етс€ длина entries между вызовами Ч обновим массив
                     var newArr = new float[ev.effects.entries.Length];
                     for (int j = 0; j < Mathf.Min(newArr.Length, timers.Length); j++) newArr[j] = timers[j];
                     for (int j = timers.Length; j < newArr.Length; j++) newArr[j] = -9999f;
@@ -77,18 +110,24 @@ public class ProcManager : MonoBehaviour
                 timers[i] = Time.time;
             }
 
-            // ¬ыполн€ем действие Ч Action сам знает, что делает (пулл, доп. урон и т.п.)
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
-    // ¬ызов Ч можно делать из любого места; передаЄм ссылки, struct-контекст Ч минимум GC
-    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx) 
+    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx)
     {
         if (effects == null || target == null) return;
-        // проста€ защита от переполнени€
         if (queue.Count > 20000) return;
 
-        queue.Add(new ProcEvent {target = target, effects = effects, ctx = ctx });
+        if (guardedFrame != Time.frameCount)
+        {
+            queuedThisFrame.Clear();
+            guardedFrame = Time.frameCount;
+        }
+
+        var key = new ProcEventKey(Time.frameCount, target.GetInstanceID(), effects.GetInstanceID(), ctx);
+        if (!queuedThisFrame.Add(key)) return;
+
+        queue.Add(new ProcEvent { target = target, effects = effects, ctx = ctx });
     }
 }

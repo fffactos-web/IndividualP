@@ -43,18 +43,18 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         currentHealth = maxHealth;
     }
 
-    // effectKey — ключ эффекта (обычно GetInstanceID() ассета)
+    // effectKey В— ГЄГ«ГѕГ· ГЅГґГґГҐГЄГІГ  (Г®ГЎГ»Г·Г­Г® GetInstanceID() Г Г±Г±ГҐГІГ )
     public void ApplyDot(int effectKey, float dps, float duration, float tickInterval, Character_Properties source, Poison.StackingMode stackingMode)
     {
         if (dps <= 0f || duration <= 0f) return;
 
-        // Защитные меры
+        // Г‡Г Г№ГЁГІГ­Г»ГҐ Г¬ГҐГ°Г»
         if (tickInterval <= 0f) tickInterval = 0.1f;
         if (tickInterval > duration) tickInterval = duration;
 
         if (stackingMode == Poison.StackingMode.Refresh)
         {
-            // если уже есть — перезапускаем корутину (обновляем длительность)
+            // ГҐГ±Г«ГЁ ГіГ¦ГҐ ГҐГ±ГІГј В— ГЇГҐГ°ГҐГ§Г ГЇГіГ±ГЄГ ГҐГ¬ ГЄГ®Г°ГіГІГЁГ­Гі (Г®ГЎГ­Г®ГўГ«ГїГҐГ¬ Г¤Г«ГЁГІГҐГ«ГјГ­Г®Г±ГІГј)
             if (activeDots.TryGetValue(effectKey, out Coroutine existing))
             {
                 StopCoroutine(existing);
@@ -80,46 +80,29 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     IEnumerator DotCoroutine(int key, float dps, float duration, float tickInterval, Character_Properties source)
     {
         float remaining = duration;
-        // урон в каждом тике
+        // ГіГ°Г®Г­ Гў ГЄГ Г¦Г¤Г®Г¬ ГІГЁГЄГҐ
         float dmgPerTick = dps * tickInterval;
 
         while (remaining > 0f)
         {
-            // нанося урон, используем внутренний вызов, чтобы не ставить новые proc'ы и не вводить рекурсию
-            InternalApplyDamage(dmgPerTick);
+            // Г­Г Г­Г®Г±Гї ГіГ°Г®Г­, ГЁГ±ГЇГ®Г«ГјГ§ГіГҐГ¬ ГўГ­ГіГІГ°ГҐГ­Г­ГЁГ© ГўГ»Г§Г®Гў, Г·ГІГ®ГЎГ» Г­ГҐ Г±ГІГ ГўГЁГІГј Г­Г®ГўГ»ГҐ proc'Г» ГЁ Г­ГҐ ГўГўГ®Г¤ГЁГІГј Г°ГҐГЄГіГ°Г±ГЁГѕ
+            ApplyDamageWithProcs(dmgPerTick, null, false, ProcTrigger.OnDamaged);
 
             remaining -= tickInterval;
             if (remaining <= 0f) break;
             yield return new WaitForSeconds(tickInterval);
         }
 
-        // удаляем запись
+        // ГіГ¤Г Г«ГїГҐГ¬ Г§Г ГЇГЁГ±Гј
         activeDots.Remove(key);
     }
 
 
-    // Этот метод должен вызываться когда наносится урон извне (например из Gun.cs)
-    // source — weaponEffect — EffectData от оружия (если есть)
+    // ГќГІГ®ГІ Г¬ГҐГІГ®Г¤ Г¤Г®Г«Г¦ГҐГ­ ГўГ»Г§Г»ГўГ ГІГјГ±Гї ГЄГ®ГЈГ¤Г  Г­Г Г­Г®Г±ГЁГІГ±Гї ГіГ°Г®Г­ ГЁГ§ГўГ­ГҐ (Г­Г ГЇГ°ГЁГ¬ГҐГ° ГЁГ§ Gun.cs)
+    // source В— weaponEffect В— EffectData Г®ГІ Г®Г°ГіГ¦ГЁГї (ГҐГ±Г«ГЁ ГҐГ±ГІГј)
     public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false)
     {
-        InternalApplyDamage(damage);
-
-        ProcContext ctx = new ProcContext
-        {
-            damageDone = damage,
-            isCrit = isCrit,
-            hitLayer = gameObject.layer
-        };
-
-        // эффекты оружия
-        if (weaponEffect != null)
-            ProcManager.Instance.QueueProc(this, weaponEffect, ctx);
-
-        // эффекты персонажа (ВОТ ОНИ!)
-        if (character != null && character.activeEffects != null && character.activeEffects.Count > 0)
-        {
-            ProcManager.Instance.QueueProc(this, WrapEntries(character.activeEffects), ctx);
-        }
+        ApplyDamageWithProcs(damage, weaponEffect, isCrit, ProcTrigger.OnHit);
     }
 
     static EffectData WrapEntries(List<EffectEntry> list)
@@ -129,12 +112,40 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         return data;
     }
 
+    void ApplyDamageWithProcs(float damage, EffectData weaponEffect, bool isCrit, ProcTrigger incomingTrigger)
+    {
+        InternalApplyDamage(damage);
 
-    // Внутреннее применение здоровья — небольшая выделенная функция, чтобы EffectAction мог напрямую нанести доп. урон
+        if (ProcManager.Instance == null) return;
+
+        ProcContext incomingCtx = new ProcContext
+        {
+            trigger = incomingTrigger,
+            damageDone = damage,
+            isCrit = isCrit,
+            hitLayer = gameObject.layer
+        };
+
+        if (weaponEffect != null)
+            ProcManager.Instance.QueueProc(this, weaponEffect, incomingCtx);
+
+        if (character != null && character.activeEffects != null && character.activeEffects.Count > 0)
+            ProcManager.Instance.QueueProc(this, WrapEntries(character.activeEffects), incomingCtx);
+
+        if (onDamageEffects != null)
+        {
+            ProcContext damagedCtx = incomingCtx;
+            damagedCtx.trigger = ProcTrigger.OnDamaged;
+            ProcManager.Instance.QueueProc(this, onDamageEffects, damagedCtx);
+        }
+    }
+
+
+    // Г‚Г­ГіГІГ°ГҐГ­Г­ГҐГҐ ГЇГ°ГЁГ¬ГҐГ­ГҐГ­ГЁГҐ Г§Г¤Г®Г°Г®ГўГјГї В— Г­ГҐГЎГ®Г«ГјГёГ Гї ГўГ»Г¤ГҐГ«ГҐГ­Г­Г Гї ГґГіГ­ГЄГ¶ГЁГї, Г·ГІГ®ГЎГ» EffectAction Г¬Г®ГЈ Г­Г ГЇГ°ГїГ¬ГіГѕ Г­Г Г­ГҐГ±ГІГЁ Г¤Г®ГЇ. ГіГ°Г®Г­
     public void InternalApplyDamage(float damage)
     {
         currentHealth -= damage;
-        // тут можешь добавить всплывающую надпись урона, звук, анимацию
+        // ГІГіГІ Г¬Г®Г¦ГҐГёГј Г¤Г®ГЎГ ГўГЁГІГј ГўГ±ГЇГ«Г»ГўГ ГѕГ№ГіГѕ Г­Г Г¤ГЇГЁГ±Гј ГіГ°Г®Г­Г , Г§ГўГіГЄ, Г Г­ГЁГ¬Г Г¶ГЁГѕ
         if (currentHealth <= 0f)
         {
             Die();
