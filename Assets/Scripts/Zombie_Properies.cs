@@ -23,16 +23,15 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     Quaternion initialLocalRotation;
     Vector3 initialLocalPosition;
 
-    [SerializeField] private int baseGemCount = 2;
-    [SerializeField] private int gemCountPerDifficulty = 2;
+    [SerializeField] int baseGemCount = 2;
+    [SerializeField] int gemCountPerDifficulty = 2;
 
-    [SerializeField] private float coneHeight = 1.2f;
-    [SerializeField] private float coneRadius = 8f;
+    [SerializeField] float coneRadius = 8f;
 
     [Header("Drops / Effects")]
     public EffectData onDamageEffects;
 
-    Dictionary<int, Coroutine> activeDots = new Dictionary<int, Coroutine>();
+    readonly Dictionary<int, Coroutine> activeDots = new Dictionary<int, Coroutine>();
 
     static int s_dotCounter = 0;
     static int NextDotId() => ++s_dotCounter;
@@ -42,31 +41,45 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     void Awake()
     {
         currentHealth = maxHealth;
+        initialLocalRotation = transform.localRotation;
+        initialLocalPosition = transform.localPosition;
+
+        GameObject player = GameObject.FindGameObjectWithTag("Character");
+        if (player != null)
+            character = player.GetComponent<Character_Properties>();
+
+        GameObject killsObj = GameObject.FindGameObjectWithTag("Kills Status");
+        if (killsObj != null)
+            killsStatus = killsObj.GetComponent<TextMeshProUGUI>();
     }
 
-    // effectKey  êëþ÷ ýôôåêòà (îáû÷íî GetInstanceID() àññåòà)
     public void ApplyDot(int effectKey, float dps, float duration, float tickInterval, Character_Properties source, Poison.StackingMode stackingMode)
     {
-        if (dps <= 0f || duration <= 0f) return;
+        if (dps <= 0f || duration <= 0f)
+            return;
 
-        // Çàùèòíûå ìåðû
-        if (tickInterval <= 0f) tickInterval = 0.1f;
-        if (tickInterval > duration) tickInterval = duration;
+        if (tickInterval <= 0f)
+            tickInterval = 0.1f;
+
+        if (tickInterval > duration)
+            tickInterval = duration;
 
         if (stackingMode == Poison.StackingMode.Refresh)
         {
-            // åñëè óæå åñòü  ïåðåçàïóñêàåì êîðóòèíó (îáíîâëÿåì äëèòåëüíîñòü)
             if (activeDots.TryGetValue(effectKey, out Coroutine existing))
             {
                 StopCoroutine(existing);
                 activeDots.Remove(effectKey);
             }
+
             Coroutine c = StartCoroutine(DotCoroutine(effectKey, dps, duration, tickInterval, source));
             activeDots[effectKey] = c;
         }
         else if (stackingMode == Poison.StackingMode.Ignore)
         {
-            if (activeDots.ContainsKey(effectKey)) return;
+            if (activeDots.ContainsKey(effectKey))
+                return;
+
             Coroutine c = StartCoroutine(DotCoroutine(effectKey, dps, duration, tickInterval, source));
             activeDots[effectKey] = c;
         }
@@ -81,96 +94,108 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     IEnumerator DotCoroutine(int key, float dps, float duration, float tickInterval, Character_Properties source)
     {
         float remaining = duration;
-        // óðîí â êàæäîì òèêå
         float dmgPerTick = dps * tickInterval;
 
         while (remaining > 0f && !isDead)
         {
-            // íàíîñÿ óðîí, èñïîëüçóåì âíóòðåííèé âûçîâ, ÷òîáû íå ñòàâèòü íîâûå proc'û è íå ââîäèòü ðåêóðñèþ
-            ApplyDamageWithProcs(dmgPerTick, null, false, ProcTrigger.OnDamaged);
+            TakeDamage(dmgPerTick, null, false, source, ProcDamageType.DamageOverTime);
 
             remaining -= tickInterval;
-            if (remaining <= 0f) break;
+            if (remaining <= 0f)
+                break;
+
             yield return new WaitForSeconds(tickInterval);
         }
 
-        // óäàëÿåì çàïèñü
         activeDots.Remove(key);
     }
 
-
-    // Ýòîò ìåòîä äîëæåí âûçûâàòüñÿ êîãäà íàíîñèòñÿ óðîí èçâíå (íàïðèìåð èç Gun.cs)
-    // source  weaponEffect  EffectData îò îðóæèÿ (åñëè åñòü)
-    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false)
+    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false, Character_Properties attacker = null, ProcDamageType damageType = ProcDamageType.Direct)
     {
-        ApplyDamageWithProcs(damage, weaponEffect, isCrit, ProcTrigger.OnHit);
-    }
+        if (isDead || damage <= 0f)
+            return;
 
-    static EffectData WrapEntries(List<EffectEntry> list)
-    {
-        EffectData data = ScriptableObject.CreateInstance<EffectData>();
-        data.entries = list.ToArray();
-        return data;
-    }
-
-    void ApplyDamageWithProcs(float damage, EffectData weaponEffect, bool isCrit, ProcTrigger incomingTrigger)
-    {
+        float hpBefore = currentHealth;
         InternalApplyDamage(damage);
 
-        if (ProcManager.Instance == null) return;
+        bool didKill = isDead;
 
-        ProcContext incomingCtx = new ProcContext
+        ProcContext onHitCtx = BuildContext(
+            trigger: ProcTrigger.OnHit,
+            damageDone: damage,
+            isCrit: isCrit,
+            hpBefore: hpBefore,
+            attacker: attacker,
+            damageType: damageType,
+            targetWasKilled: didKill
+        );
+
+        if (ProcManager.Instance == null)
         {
-            trigger = incomingTrigger,
-            damageDone = damage,
+            if (didKill)
+                Die(onHitCtx);
+            return;
+        }
+
+        if (weaponEffect != null)
+            ProcManager.Instance.QueueProc(attacker, this, weaponEffect, onHitCtx);
+
+        if (attacker != null && attacker.activeEffects != null && attacker.activeEffects.Count > 0)
+            ProcManager.Instance.QueueProc(attacker, this, attacker.activeEffects, attacker.GetInstanceID(), onHitCtx);
+
+        if (onDamageEffects != null)
+        {
+            ProcContext damagedCtx = onHitCtx;
+            damagedCtx.trigger = ProcTrigger.OnDamaged;
+            ProcManager.Instance.QueueProc(attacker, this, onDamageEffects, damagedCtx);
+        }
+
+        if (didKill)
+        {
+            ProcContext onKillCtx = onHitCtx;
+            onKillCtx.trigger = ProcTrigger.OnKill;
+
+            if (weaponEffect != null)
+                ProcManager.Instance.QueueProc(attacker, this, weaponEffect, onKillCtx);
+
+            if (attacker != null && attacker.activeEffects != null && attacker.activeEffects.Count > 0)
+                ProcManager.Instance.QueueProc(attacker, this, attacker.activeEffects, attacker.GetInstanceID(), onKillCtx);
+
+            Die(onKillCtx);
+        }
+    }
+
+    ProcContext BuildContext(ProcTrigger trigger, float damageDone, bool isCrit, float hpBefore, Character_Properties attacker, ProcDamageType damageType, bool targetWasKilled)
+    {
+        return new ProcContext
+        {
+            trigger = trigger,
+            damageDone = damageDone,
             isCrit = isCrit,
             hitLayer = gameObject.layer,
-            didKill = didKill,
-            finalDamage = finalDamage,
+            targetWasKilled = targetWasKilled,
+            targetHealthBefore = hpBefore,
+            targetHealthAfter = currentHealth,
+            hitPosition = transform.position,
             attacker = attacker,
             victim = this,
             damageType = damageType
         };
-
-        if (weaponEffect != null)
-            ProcManager.Instance.QueueProc(this, weaponEffect, incomingCtx);
-
-        if (character != null && character.activeEffects != null && character.activeEffects.Count > 0)
-            ProcManager.Instance.QueueProc(this, WrapEntries(character.activeEffects), incomingCtx);
-
-        if (onDamageEffects != null)
-        {
-            ProcContext damagedCtx = incomingCtx;
-            damagedCtx.trigger = ProcTrigger.OnDamaged;
-            ProcManager.Instance.QueueProc(this, onDamageEffects, damagedCtx);
-        }
-
-        if (attacker != null && attacker.activeEffects != null && attacker.activeEffects.Count > 0 && ProcManager.Instance != null)
-        {
-            EffectData wrapped = WrapEntries(attacker.activeEffects);
-            ProcManager.Instance.QueueProc(attacker, this, wrapped, ctx, EffectTriggerType.OnHit);
-            if (didKill)
-                ProcManager.Instance.QueueProc(attacker, this, wrapped, ctx, EffectTriggerType.OnKill);
-        }
-
-        if (onDamageEffects != null && ProcManager.Instance != null)
-            ProcManager.Instance.QueueProc(attacker, this, onDamageEffects, ctx, EffectTriggerType.OnDamaged);
-
-        if (didKill)
-            Die(ctx);
     }
 
-
-    // Âíóòðåííåå ïðèìåíåíèå çäîðîâüÿ  íåáîëüøàÿ âûäåëåííàÿ ôóíêöèÿ, ÷òîáû EffectAction ìîã íàïðÿìóþ íàíåñòè äîï. óðîí
     public void InternalApplyDamage(float damage)
     {
+        if (isDead)
+            return;
+
         currentHealth -= damage;
-        // òóò ìîæåøü äîáàâèòü âñïëûâàþùóþ íàäïèñü óðîíà, çâóê, àíèìàöèþ
+        ShowDamage(damage);
+
         if (currentHealth <= 0f)
         {
-            Die();
+            currentHealth = 0f;
+            isDead = true;
         }
-        ShowDamage(damage);
     }
 
     public void OnSpawn()
@@ -182,12 +207,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
         if (onDamageEffects != null && ProcManager.Instance != null)
         {
-            ProcContext ctx = new ProcContext
-            {
-                victim = this,
-                damageType = ProcDamageType.Proc
-            };
-            ProcManager.Instance.QueueProc(null, this, onDamageEffects, ctx, EffectTriggerType.OnSpawn);
+            ProcContext ctx = BuildContext(ProcTrigger.OnSpawn, 0f, false, currentHealth, null, ProcDamageType.Proc, false);
+            ProcManager.Instance.QueueProc(null, this, onDamageEffects, ctx);
         }
     }
 
@@ -198,6 +219,12 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             PoolManager.I.popupPool.Despawn(damagePopup.gameObject);
             damagePopup = null;
         }
+
+        foreach (var c in activeDots.Values)
+            if (c != null)
+                StopCoroutine(c);
+
+        activeDots.Clear();
         ResetProperties();
     }
 
@@ -218,11 +245,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
         if (damagePopup == null || Time.time - lastDamageTime > stackResetTime)
         {
-            var go = PoolManager.I.popupPool.Spawn(
-                transform.position,
-                Quaternion.identity
-            );
-
+            GameObject go = PoolManager.I.popupPool.Spawn(transform.position, Quaternion.identity);
             if (go == null)
             {
                 Debug.LogError("Spawn returned NULL");
@@ -230,7 +253,6 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             }
 
             damagePopup = go.GetComponent<DamagePopup>();
-
             if (damagePopup == null)
             {
                 Debug.LogError("DamagePopup component NOT FOUND on prefab");
@@ -246,11 +268,13 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     void Die(ProcContext deathContext)
     {
-        if (isDead) return;
-        isDead = true;
-
         if (onDamageEffects != null && ProcManager.Instance != null)
-            ProcManager.Instance.QueueProc(deathContext.attacker, this, onDamageEffects, deathContext, EffectTriggerType.OnDeath);
+        {
+            ProcContext onDeathCtx = deathContext;
+            onDeathCtx.trigger = ProcTrigger.OnDeath;
+            onDeathCtx.targetWasKilled = true;
+            ProcManager.Instance.QueueProc(deathContext.attacker, this, onDamageEffects, onDeathCtx);
+        }
 
         if (damagePopup != null)
         {
@@ -264,25 +288,27 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         {
             character.kills++;
             if (killsStatus != null)
-                killsStatus.text = (character.kills + 1).ToString();
+                killsStatus.text = character.kills.ToString();
         }
 
-        ResetProperties();
-
         foreach (var c in activeDots.Values)
-            if (c != null) StopCoroutine(c);
+            if (c != null)
+                StopCoroutine(c);
+
         activeDots.Clear();
 
-        PoolManager.I.deathEffectPool.Spawn(
-            transform.position + Vector3.up * 0.8f,
-            Quaternion.identity
-        );
+        if (PoolManager.I != null && PoolManager.I.deathEffectPool != null)
+            PoolManager.I.deathEffectPool.Spawn(transform.position + Vector3.up * 0.8f, Quaternion.identity);
 
-        PoolManager.I.followerZombiePool.Despawn(transform.root.gameObject);
+        if (PoolManager.I != null && PoolManager.I.followerZombiePool != null)
+            PoolManager.I.followerZombiePool.Despawn(transform.root.gameObject);
     }
 
     void SpawnGems()
     {
+        if (PoolManager.I == null || PoolManager.I.gemPool == null)
+            return;
+
         int gemCount = baseGemCount;
         if (character != null)
             gemCount += Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
@@ -292,14 +318,10 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         for (int i = 0; i < gemCount; i++)
         {
             float angle = Random.Range(0f, Mathf.PI * 2f);
-            float radius = Random.Range(coneRadius / 2, coneRadius);
-
-            Vector3 horizontal = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-
-            Vector3 targetPos = origin + horizontal;
+            float radius = Random.Range(coneRadius / 2f, coneRadius);
+            Vector3 targetPos = origin + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
 
             GameObject gem = PoolManager.I.gemPool.Spawn(origin, Quaternion.identity);
-
             gem.transform.DOJump(targetPos, Random.Range(2f, 4f), 1, Random.Range(1f, 2f), false).SetEase(Ease.OutQuad);
         }
     }
