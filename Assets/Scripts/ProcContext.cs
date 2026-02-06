@@ -1,8 +1,20 @@
-// Маленькая struct-структура для передачи контекста proc'а без аллокаций.
+public enum ProcDamageType
+{
+    Direct,
+    DoT,
+    Explosion,
+    Proc
+}
+
 public struct ProcContext
 {
     public float damageDone;
     public bool isCrit;
     public int hitLayer;
-    // расширяй по потребности (weaponId, projectileSpeed и т.п.)
+
+    public bool didKill;
+    public float finalDamage;
+    public Character_Properties attacker;
+    public Zombie_Properies victim;
+    public ProcDamageType damageType;
 }

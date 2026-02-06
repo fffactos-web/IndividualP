@@ -11,15 +11,13 @@ public class ProcManager : MonoBehaviour
         public Zombie_Properies target;
         public EffectData effects;
         public ProcContext ctx;
+        public EffectTriggerType triggerType;
     }
 
-    // очередь без посто€нно создаваемых объектов: List<ProcEvent> хранит struct'ы
     List<ProcEvent> queue = new List<ProcEvent>(256);
-
-    // дл€ cooldown'ов: (targetInstanceId -> entryIndex -> lastTime)
     Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
 
-    [Tooltip("ћакс. procs обработать за кадр")]
+    [Tooltip("Max processed procs per frame")]
     public int maxProcessPerFrame = 128;
 
     void Awake()
@@ -59,13 +57,13 @@ public class ProcManager : MonoBehaviour
         {
             var entry = ev.effects.entries[i];
             if (entry.action == null) continue;
+            if (entry.triggerType != ev.triggerType) continue;
             if (Random.value > entry.procChance) continue;
 
             if (entry.cooldownSeconds > 0f)
             {
                 if (i >= timers.Length)
                 {
-                    // если мен€етс€ длина entries между вызовами Ч обновим массив
                     var newArr = new float[ev.effects.entries.Length];
                     for (int j = 0; j < Mathf.Min(newArr.Length, timers.Length); j++) newArr[j] = timers[j];
                     for (int j = timers.Length; j < newArr.Length; j++) newArr[j] = -9999f;
@@ -77,18 +75,15 @@ public class ProcManager : MonoBehaviour
                 timers[i] = Time.time;
             }
 
-            // ¬ыполн€ем действие Ч Action сам знает, что делает (пулл, доп. урон и т.п.)
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
-    // ¬ызов Ч можно делать из любого места; передаЄм ссылки, struct-контекст Ч минимум GC
-    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx) 
+    public void QueueProc(Character_Properties source, Zombie_Properies target, EffectData effects, ProcContext ctx, EffectTriggerType triggerType)
     {
         if (effects == null || target == null) return;
-        // проста€ защита от переполнени€
         if (queue.Count > 20000) return;
 
-        queue.Add(new ProcEvent {target = target, effects = effects, ctx = ctx });
+        queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx, triggerType = triggerType });
     }
 }
