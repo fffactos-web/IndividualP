@@ -24,16 +24,16 @@ public class Poison : EffectAction
     {
         if (target == null) return;
         int effectKey = GetInstanceID();
-        target.ApplyDot(effectKey, damagePerSecond, duration, Mathf.Max(0.01f, tickInterval), source, ToNewStacking(stacking));
+        target.ApplyDot(effectKey, damagePerSecond, duration, Mathf.Max(0.01f, tickInterval), source, stacking);
     }
 
-    PoisonOnHitAction.StackingMode ToNewStacking(StackingMode mode)
-    {
-        switch (mode)
-        {
-            case StackingMode.Stack: return PoisonOnHitAction.StackingMode.Stack;
-            case StackingMode.Ignore: return PoisonOnHitAction.StackingMode.Ignore;
-            default: return PoisonOnHitAction.StackingMode.Refresh;
-        }
-    }
+    //PoisonOnHitAction.StackingMode ToNewStacking(StackingMode mode)
+    //{
+    //    switch (mode)
+    //    {
+    //        case StackingMode.Stack: return PoisonOnHitAction.StackingMode.Stack;
+    //        case StackingMode.Ignore: return PoisonOnHitAction.StackingMode.Ignore;
+    //        default: return PoisonOnHitAction.StackingMode.Refresh;
+    //    }
+    //}
 }

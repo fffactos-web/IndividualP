@@ -164,6 +164,18 @@ public class Character_Properties : MonoBehaviour, IGemCollector
         var gun = gunHolder.GetComponentInChildren<Gun>();
         var camGun = camGunHolder.GetComponentInChildren<Gun>();
 
+        if (gun == null || camGun == null)
+        {
+            Debug.LogWarning("Couldn't find gun instances under the configured holders.");
+            return;
+        }
+
+        gun.effectData ??= new EffectData();
+        camGun.effectData ??= new EffectData();
+
+        gun.effectData.entries = activeEffects.ToArray();
+        camGun.effectData.entries = activeEffects.ToArray();
+
         gun.SetOwner(this);
         camGun.SetOwner(this);
     }

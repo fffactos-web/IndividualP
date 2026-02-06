@@ -31,6 +31,9 @@ public class Gun : MonoBehaviour
 
     void Start()
     {
+        effectData = new EffectData();
+        effectData.entries = new EffectEntry[150];
+
         crosshair = GameObject.FindGameObjectWithTag("Crosshair")
             .GetComponent<RectTransform>();
 
