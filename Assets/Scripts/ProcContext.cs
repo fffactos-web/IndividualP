@@ -1,8 +1,12 @@
-// Маленькая struct-структура для передачи контекста proc'а без аллокаций.
+using UnityEngine;
+
+// Lightweight data passed from hit event to effect actions.
 public struct ProcContext
 {
     public float damageDone;
     public bool isCrit;
     public int hitLayer;
-    // расширяй по потребности (weaponId, projectileSpeed и т.п.)
+
+    public bool targetWasKilled;
+    public Vector3 hitPosition;
 }

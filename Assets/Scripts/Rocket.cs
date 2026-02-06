@@ -71,7 +71,7 @@ public class Rocket : MonoBehaviour, IPoolable
 
         foreach (var col in Physics.OverlapSphere(transform.position, radius))
         {
-            col.GetComponent<Zombie_Properies>()?.TakeDamage(dmg, effectData);
+            col.GetComponent<Zombie_Properies>()?.TakeDamage(dmg, effectData, false, null);
         }
 
         PoolManager.I.rocketsPool.Despawn(gameObject);
