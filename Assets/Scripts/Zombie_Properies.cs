@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-
 public class Zombie_Properies : MonoBehaviour, IPoolable
 {
     [Header("Health")]
@@ -38,6 +37,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     static int s_dotCounter = 0;
     static int NextDotId() => ++s_dotCounter;
 
+    bool isDead;
+
     void Awake()
     {
         currentHealth = maxHealth;
@@ -69,7 +70,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             Coroutine c = StartCoroutine(DotCoroutine(effectKey, dps, duration, tickInterval, source));
             activeDots[effectKey] = c;
         }
-        else // Stack
+        else
         {
             int newKey = NextDotId();
             Coroutine c = StartCoroutine(DotCoroutine(newKey, dps, duration, tickInterval, source));
@@ -83,7 +84,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         // óðîí â êàæäîì òèêå
         float dmgPerTick = dps * tickInterval;
 
-        while (remaining > 0f)
+        while (remaining > 0f && !isDead)
         {
             // íàíîñÿ óðîí, èñïîëüçóåì âíóòðåííèé âûçîâ, ÷òîáû íå ñòàâèòü íîâûå proc'û è íå ââîäèòü ðåêóðñèþ
             ApplyDamageWithProcs(dmgPerTick, null, false, ProcTrigger.OnDamaged);
@@ -123,7 +124,12 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             trigger = incomingTrigger,
             damageDone = damage,
             isCrit = isCrit,
-            hitLayer = gameObject.layer
+            hitLayer = gameObject.layer,
+            didKill = didKill,
+            finalDamage = finalDamage,
+            attacker = attacker,
+            victim = this,
+            damageType = damageType
         };
 
         if (weaponEffect != null)
@@ -138,6 +144,20 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             damagedCtx.trigger = ProcTrigger.OnDamaged;
             ProcManager.Instance.QueueProc(this, onDamageEffects, damagedCtx);
         }
+
+        if (attacker != null && attacker.activeEffects != null && attacker.activeEffects.Count > 0 && ProcManager.Instance != null)
+        {
+            EffectData wrapped = WrapEntries(attacker.activeEffects);
+            ProcManager.Instance.QueueProc(attacker, this, wrapped, ctx, EffectTriggerType.OnHit);
+            if (didKill)
+                ProcManager.Instance.QueueProc(attacker, this, wrapped, ctx, EffectTriggerType.OnKill);
+        }
+
+        if (onDamageEffects != null && ProcManager.Instance != null)
+            ProcManager.Instance.QueueProc(attacker, this, onDamageEffects, ctx, EffectTriggerType.OnDamaged);
+
+        if (didKill)
+            Die(ctx);
     }
 
 
@@ -158,6 +178,17 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         ResetProperties();
         damagePopup = null;
         lastDamageTime = 0f;
+        isDead = false;
+
+        if (onDamageEffects != null && ProcManager.Instance != null)
+        {
+            ProcContext ctx = new ProcContext
+            {
+                victim = this,
+                damageType = ProcDamageType.Proc
+            };
+            ProcManager.Instance.QueueProc(null, this, onDamageEffects, ctx, EffectTriggerType.OnSpawn);
+        }
     }
 
     public void OnDespawn()
@@ -169,8 +200,6 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         }
         ResetProperties();
     }
-
-    // ===== HEALTH =====
 
     void ResetProperties()
     {
@@ -215,11 +244,14 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         lastDamageTime = Time.time;
     }
 
-
-    // ===== DEATH =====
-
-    void Die()
+    void Die(ProcContext deathContext)
     {
+        if (isDead) return;
+        isDead = true;
+
+        if (onDamageEffects != null && ProcManager.Instance != null)
+            ProcManager.Instance.QueueProc(deathContext.attacker, this, onDamageEffects, deathContext, EffectTriggerType.OnDeath);
+
         if (damagePopup != null)
         {
             damagePopup.DetachAndFinish();
@@ -228,8 +260,13 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
         SpawnGems();
 
-        character.kills++;
-        killsStatus.text = (character.kills + 1).ToString();
+        if (character != null)
+        {
+            character.kills++;
+            if (killsStatus != null)
+                killsStatus.text = (character.kills + 1).ToString();
+        }
+
         ResetProperties();
 
         foreach (var c in activeDots.Values)
@@ -246,14 +283,16 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     void SpawnGems()
     {
-        int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
+        int gemCount = baseGemCount;
+        if (character != null)
+            gemCount += Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
 
         Vector3 origin = transform.position + Vector3.up * 0.5f;
 
         for (int i = 0; i < gemCount; i++)
         {
             float angle = Random.Range(0f, Mathf.PI * 2f);
-            float radius = Random.Range(coneRadius/2, coneRadius);
+            float radius = Random.Range(coneRadius / 2, coneRadius);
 
             Vector3 horizontal = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
 
