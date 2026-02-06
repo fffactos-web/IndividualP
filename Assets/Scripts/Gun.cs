@@ -73,7 +73,7 @@ public class Gun : MonoBehaviour
             damage *= owner.critDamage;
 
         float dealt = Mathf.Min(damage, zombie.currentHealth);
-        zombie.TakeDamage(dealt, effectData, owner, isCrit);
+        zombie.TakeDamage(dealt, effectData, isCrit, owner, ProcDamageType.Direct);
 
 
         // lifesteal

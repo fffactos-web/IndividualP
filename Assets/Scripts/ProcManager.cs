@@ -14,29 +14,13 @@ public class ProcManager : MonoBehaviour
         public IReadOnlyList<EffectEntry> runtimeEntries;
         public int entriesKey;
         public ProcContext ctx;
+        public EffectTriggerType triggerType;
     }
 
-    struct CooldownKey
-    {
-        public int targetId;
-        public int actionInstanceId;
-        public int triggerType;
-
-        public CooldownKey(int targetId, int actionInstanceId, int triggerType)
-        {
-            this.targetId = targetId;
-            this.actionInstanceId = actionInstanceId;
-            this.triggerType = triggerType;
-        }
-    }
-
-    // Вместо выделений/копирований под каждый тик: List<ProcEvent> + struct'ы
     List<ProcEvent> queue = new List<ProcEvent>(256);
+    Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
 
-    // Кулдауны: (targetId + actionInstanceId + triggerType) -> lastTime
-    Dictionary<CooldownKey, float> lastTriggerTimeByKey = new Dictionary<CooldownKey, float>();
-
-    [Tooltip("Макс. procs обработается за кадр")]
+    [Tooltip("Max processed procs per frame")]
     public int maxProcessPerFrame = 128;
 
         queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
@@ -104,8 +88,9 @@ public class ProcManager : MonoBehaviour
     {
         for (int i = 0; i < entries.Count; i++)
         {
-            var entry = entries[i];
-            if (entry == null || entry.action == null) continue;
+            var entry = ev.effects.entries[i];
+            if (entry.action == null) continue;
+            if (entry.triggerType != ev.triggerType) continue;
             if (Random.value > entry.procChance) continue;
 
             if (entry.cooldownSeconds > 0f)
@@ -116,24 +101,25 @@ public class ProcManager : MonoBehaviour
                 if (lastTriggerTimeByKey.TryGetValue(cooldownKey, out float lastTriggerTime) &&
                     Time.time - lastTriggerTime < entry.cooldownSeconds)
                 {
-                    continue;
+                    var newArr = new float[ev.effects.entries.Length];
+                    for (int j = 0; j < Mathf.Min(newArr.Length, timers.Length); j++) newArr[j] = timers[j];
+                    for (int j = timers.Length; j < newArr.Length; j++) newArr[j] = -9999f;
+                    timers = newArr;
+                    lastTriggerTime[targetId] = timers;
                 }
 
                 lastTriggerTimeByKey[cooldownKey] = Time.time;
             }
 
-            // Передаём контекст в Action для условий, доп. логики (крит, урон и т.д.)
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
-    // Вызов из места, где вы знаете цель; очередь пакетит, struct-элементы и минимум GC
-    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx)
+    public void QueueProc(Character_Properties source, Zombie_Properies target, EffectData effects, ProcContext ctx, EffectTriggerType triggerType)
     {
         if (effects == null || target == null) return;
-        // защита очереди от разрастания
         if (queue.Count > 20000) return;
 
-        queue.Add(new ProcEvent { target = target, effects = effects, ctx = ctx });
+        queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx, triggerType = triggerType });
     }
 }

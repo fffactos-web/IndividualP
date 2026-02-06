@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-
 public class Zombie_Properies : MonoBehaviour, IPoolable
 {
     [Header("Health")]
@@ -38,23 +37,22 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     static int s_dotCounter = 0;
     static int NextDotId() => ++s_dotCounter;
 
+    bool isDead;
+
     void Awake()
     {
         currentHealth = maxHealth;
     }
 
-    // effectKey — êëþ÷ ýôôåêòà (îáû÷íî GetInstanceID() àññåòà)
     public void ApplyDot(int effectKey, float dps, float duration, float tickInterval, Character_Properties source, Poison.StackingMode stackingMode)
     {
         if (dps <= 0f || duration <= 0f) return;
 
-        // Çàùèòíûå ìåðû
         if (tickInterval <= 0f) tickInterval = 0.1f;
         if (tickInterval > duration) tickInterval = duration;
 
         if (stackingMode == Poison.StackingMode.Refresh)
         {
-            // åñëè óæå åñòü — ïåðåçàïóñêàåì êîðóòèíó (îáíîâëÿåì äëèòåëüíîñòü)
             if (activeDots.TryGetValue(effectKey, out Coroutine existing))
             {
                 StopCoroutine(existing);
@@ -69,7 +67,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             Coroutine c = StartCoroutine(DotCoroutine(effectKey, dps, duration, tickInterval, source));
             activeDots[effectKey] = c;
         }
-        else // Stack
+        else
         {
             int newKey = NextDotId();
             Coroutine c = StartCoroutine(DotCoroutine(newKey, dps, duration, tickInterval, source));
@@ -80,39 +78,66 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     IEnumerator DotCoroutine(int key, float dps, float duration, float tickInterval, Character_Properties source)
     {
         float remaining = duration;
-        // óðîí â êàæäîì òèêå
         float dmgPerTick = dps * tickInterval;
 
-        if (source != null && source.activeEffects != null && source.activeEffects.Count > 0)
+        while (remaining > 0f && !isDead)
         {
-            // íàíîñÿ óðîí, èñïîëüçóåì âíóòðåííèé âûçîâ, ÷òîáû íå ñòàâèòü íîâûå proc'û è íå ââîäèòü ðåêóðñèþ
-            InternalApplyDamage(dmgPerTick);
+            TakeDamage(dmgPerTick, null, false, source, ProcDamageType.DoT);
 
             remaining -= tickInterval;
             if (remaining <= 0f) break;
             yield return new WaitForSeconds(tickInterval);
         }
 
-            ProcManager.Instance.QueueProc(this, character.activeEffects, ctx);
+        activeDots.Remove(key);
+    }
+
+    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false, Character_Properties attacker = null, ProcDamageType damageType = ProcDamageType.Direct)
     {
-        InternalApplyDamage(damage);
+        if (isDead || damage <= 0f) return;
+
+        float healthBefore = currentHealth;
+        bool wasAlive = healthBefore > 0f;
+
+        float finalDamage = Mathf.Min(damage, Mathf.Max(0f, healthBefore));
+        currentHealth = Mathf.Max(0f, healthBefore - damage);
+
+        bool didKill = wasAlive && currentHealth <= 0f;
 
         ProcContext ctx = new ProcContext
         {
-            damageDone = damage,
+            damageDone = finalDamage,
             isCrit = isCrit,
-            hitLayer = gameObject.layer
+            hitLayer = gameObject.layer,
+            didKill = didKill,
+            finalDamage = finalDamage,
+            attacker = attacker,
+            victim = this,
+            damageType = damageType
         };
 
-        // ýôôåêòû îðóæèÿ
-        if (weaponEffect != null)
-            ProcManager.Instance.QueueProc(this, weaponEffect, ctx);
+        ShowDamage(finalDamage);
 
-        // ýôôåêòû ïåðñîíàæà (ÂÎÒ ÎÍÈ!)
-        if (character != null && character.activeEffects != null && character.activeEffects.Count > 0)
+        if (weaponEffect != null && ProcManager.Instance != null)
         {
-            ProcManager.Instance.QueueProc(this, WrapEntries(character.activeEffects), ctx);
+            ProcManager.Instance.QueueProc(attacker, this, weaponEffect, ctx, EffectTriggerType.OnHit);
+            if (didKill)
+                ProcManager.Instance.QueueProc(attacker, this, weaponEffect, ctx, EffectTriggerType.OnKill);
         }
+
+        if (attacker != null && attacker.activeEffects != null && attacker.activeEffects.Count > 0 && ProcManager.Instance != null)
+        {
+            EffectData wrapped = WrapEntries(attacker.activeEffects);
+            ProcManager.Instance.QueueProc(attacker, this, wrapped, ctx, EffectTriggerType.OnHit);
+            if (didKill)
+                ProcManager.Instance.QueueProc(attacker, this, wrapped, ctx, EffectTriggerType.OnKill);
+        }
+
+        if (onDamageEffects != null && ProcManager.Instance != null)
+            ProcManager.Instance.QueueProc(attacker, this, onDamageEffects, ctx, EffectTriggerType.OnDamaged);
+
+        if (didKill)
+            Die(ctx);
     }
 
     static EffectData WrapEntries(List<EffectEntry> list)
@@ -122,17 +147,9 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         return data;
     }
 
-
-    // Âíóòðåííåå ïðèìåíåíèå çäîðîâüÿ — íåáîëüøàÿ âûäåëåííàÿ ôóíêöèÿ, ÷òîáû EffectAction ìîã íàïðÿìóþ íàíåñòè äîï. óðîí
     public void InternalApplyDamage(float damage)
     {
-        currentHealth -= damage;
-        // òóò ìîæåøü äîáàâèòü âñïëûâàþùóþ íàäïèñü óðîíà, çâóê, àíèìàöèþ
-        if (currentHealth <= 0f)
-        {
-            Die();
-        }
-        ShowDamage(damage);
+        TakeDamage(damage, null, false, null, ProcDamageType.Proc);
     }
 
     public void OnSpawn()
@@ -140,6 +157,17 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         ResetProperties();
         damagePopup = null;
         lastDamageTime = 0f;
+        isDead = false;
+
+        if (onDamageEffects != null && ProcManager.Instance != null)
+        {
+            ProcContext ctx = new ProcContext
+            {
+                victim = this,
+                damageType = ProcDamageType.Proc
+            };
+            ProcManager.Instance.QueueProc(null, this, onDamageEffects, ctx, EffectTriggerType.OnSpawn);
+        }
     }
 
     public void OnDespawn()
@@ -151,8 +179,6 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         }
         ResetProperties();
     }
-
-    // ===== HEALTH =====
 
     void ResetProperties()
     {
@@ -197,11 +223,14 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         lastDamageTime = Time.time;
     }
 
-
-    // ===== DEATH =====
-
-    void Die()
+    void Die(ProcContext deathContext)
     {
+        if (isDead) return;
+        isDead = true;
+
+        if (onDamageEffects != null && ProcManager.Instance != null)
+            ProcManager.Instance.QueueProc(deathContext.attacker, this, onDamageEffects, deathContext, EffectTriggerType.OnDeath);
+
         if (damagePopup != null)
         {
             damagePopup.DetachAndFinish();
@@ -210,8 +239,13 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
         SpawnGems();
 
-        character.kills++;
-        killsStatus.text = (character.kills + 1).ToString();
+        if (character != null)
+        {
+            character.kills++;
+            if (killsStatus != null)
+                killsStatus.text = (character.kills + 1).ToString();
+        }
+
         ResetProperties();
 
         foreach (var c in activeDots.Values)
@@ -228,14 +262,16 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     void SpawnGems()
     {
-        int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
+        int gemCount = baseGemCount;
+        if (character != null)
+            gemCount += Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
 
         Vector3 origin = transform.position + Vector3.up * 0.5f;
 
         for (int i = 0; i < gemCount; i++)
         {
             float angle = Random.Range(0f, Mathf.PI * 2f);
-            float radius = Random.Range(coneRadius/2, coneRadius);
+            float radius = Random.Range(coneRadius / 2, coneRadius);
 
             Vector3 horizontal = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
 
