@@ -17,13 +17,41 @@ public class ProcManager : MonoBehaviour
         public EffectTriggerType triggerType;
     }
 
-    List<ProcEvent> queue = new List<ProcEvent>(256);
-    Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
+    readonly List<ProcEvent> queue = new List<ProcEvent>(256);
 
-    [Tooltip("Max procs processed per frame")]
+    // targetInstanceId -> entryIndex -> lastTime
+    readonly Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
+
+    // Frame guard against duplicate queueing of the exact same event in the same frame.
+    readonly HashSet<ProcEventKey> queuedThisFrame = new HashSet<ProcEventKey>();
+    int guardedFrame = -1;
+
+    [Tooltip("Max amount of procs processed per frame")]
     public int maxProcessPerFrame = 128;
 
-        queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
+    readonly struct ProcEventKey
+    {
+        public readonly int frame;
+        public readonly int targetId;
+        public readonly int effectsId;
+        public readonly ProcTrigger trigger;
+        public readonly int damageBits;
+        public readonly bool isCrit;
+        public readonly int hitLayer;
+
+        public ProcEventKey(int frame, int targetId, int effectsId, ProcContext ctx)
+        {
+            this.frame = frame;
+            this.targetId = targetId;
+            this.effectsId = effectsId;
+            trigger = ctx.trigger;
+            damageBits = System.BitConverter.SingleToInt32Bits(ctx.damageDone);
+            isCrit = ctx.isCrit;
+            hitLayer = ctx.hitLayer;
+        }
+    }
+
+    void Awake()
     {
         if (Instance != null && Instance != this) Destroy(gameObject);
         else Instance = this;
@@ -31,7 +59,14 @@ public class ProcManager : MonoBehaviour
 
     void Update()
     {
+        if (guardedFrame != Time.frameCount)
+        {
+            queuedThisFrame.Clear();
+            guardedFrame = Time.frameCount;
+        }
+
         if (queue.Count == 0) return;
+
         int toProcess = Mathf.Min(maxProcessPerFrame, queue.Count);
         for (int i = 0; i < toProcess; i++)
         {
@@ -51,7 +86,7 @@ public class ProcManager : MonoBehaviour
         if (!lastTriggerTime.TryGetValue(targetId, out float[] timers))
         {
             timers = new float[ev.effects.entries.Length];
-            for (int k = 0; k < timers.Length; k++) timers[k] = -9999f;
+            for (int i = 0; i < timers.Length; i++) timers[i] = -9999f;
             lastTriggerTime[targetId] = timers;
         }
 
@@ -75,8 +110,10 @@ public class ProcManager : MonoBehaviour
         for (int i = 0; i < entries.Count; i++)
         {
             var entry = ev.effects.entries[i];
-            if (entry.action == null) continue;
-            if (entry.triggerType != ev.triggerType) continue;
+            if (entry == null || entry.action == null) continue;
+
+            // Unified order: trigger filter -> chance -> cooldown -> execute.
+            if (entry.trigger != ProcTrigger.Any && entry.trigger != ev.ctx.trigger) continue;
             if (Random.value > entry.procChance) continue;
 
             if (entry.cooldownSeconds > 0f)
@@ -97,24 +134,24 @@ public class ProcManager : MonoBehaviour
                 lastTriggerTimeByKey[cooldownKey] = Time.time;
             }
 
-            if (!entry.action.CanExecute(ev.source, ev.target, ev.ctx))
-                continue;
-
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
-    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx, Character_Properties source = null)
+    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx)
     {
-        if (effects == null) return;
+        if (effects == null || target == null) return;
         if (queue.Count > 20000) return;
 
-        queue.Add(new ProcEvent
+        if (guardedFrame != Time.frameCount)
         {
-            source = source,
-            target = target,
-            effects = effects,
-            ctx = ctx
-        });
+            queuedThisFrame.Clear();
+            guardedFrame = Time.frameCount;
+        }
+
+        var key = new ProcEventKey(Time.frameCount, target.GetInstanceID(), effects.GetInstanceID(), ctx);
+        if (!queuedThisFrame.Add(key)) return;
+
+        queue.Add(new ProcEvent { target = target, effects = effects, ctx = ctx });
     }
 }

@@ -1,12 +1,14 @@
-using UnityEngine;
+public enum ProcTrigger
+{
+    Any = 0,
+    OnHit = 1,
+    OnDamaged = 2
+}
 
-// Lightweight data passed from hit event to effect actions.
 public struct ProcContext
 {
+    public ProcTrigger trigger;
     public float damageDone;
     public bool isCrit;
     public int hitLayer;
-
-    public bool targetWasKilled;
-    public Vector3 hitPosition;
 }

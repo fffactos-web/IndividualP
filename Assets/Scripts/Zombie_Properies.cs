@@ -44,24 +44,18 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         currentHealth = maxHealth;
     }
 
-    public void ApplyDot(int effectKey, float dps, float duration, float tickInterval, Character_Properties source, PoisonOnHitAction.StackingMode stackingMode)
-        if (stackingMode == PoisonOnHitAction.StackingMode.Refresh)
-        else if (stackingMode == PoisonOnHitAction.StackingMode.Ignore)
-    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false, Character_Properties source = null)
-        bool wasAlive = currentHealth > 0f;
-        float healthBeforeHit = currentHealth;
-        Vector3 hitPosition = transform.position;
+    // effectKey  êëþ÷ ýôôåêòà (îáû÷íî GetInstanceID() àññåòà)
+    public void ApplyDot(int effectKey, float dps, float duration, float tickInterval, Character_Properties source, Poison.StackingMode stackingMode)
+    {
+        if (dps <= 0f || duration <= 0f) return;
 
-
-            hitLayer = gameObject.layer,
-            targetWasKilled = wasAlive && healthBeforeHit - damage <= 0f,
-            hitPosition = hitPosition
-            ProcManager.Instance.QueueProc(this, weaponEffect, ctx, source);
-            ProcManager.Instance.QueueProc(this, WrapEntries(character.activeEffects), ctx, character);
+        // Çàùèòíûå ìåðû
+        if (tickInterval <= 0f) tickInterval = 0.1f;
+        if (tickInterval > duration) tickInterval = duration;
 
         if (stackingMode == Poison.StackingMode.Refresh)
         {
-            // åñëè óæå åñòü — ïåðåçàïóñêàåì êîðóòèíó (îáíîâëÿåì äëèòåëüíîñòü)
+            // åñëè óæå åñòü  ïåðåçàïóñêàåì êîðóòèíó (îáíîâëÿåì äëèòåëüíîñòü)
             if (activeDots.TryGetValue(effectKey, out Coroutine existing))
             {
                 StopCoroutine(existing);
@@ -93,7 +87,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         while (remaining > 0f && !isDead)
         {
             // íàíîñÿ óðîí, èñïîëüçóåì âíóòðåííèé âûçîâ, ÷òîáû íå ñòàâèòü íîâûå proc'û è íå ââîäèòü ðåêóðñèþ
-            InternalApplyDamage(dmgPerTick);
+            ApplyDamageWithProcs(dmgPerTick, null, false, ProcTrigger.OnDamaged);
 
             remaining -= tickInterval;
             if (remaining <= 0f) break;
@@ -106,22 +100,29 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
 
     // Ýòîò ìåòîä äîëæåí âûçûâàòüñÿ êîãäà íàíîñèòñÿ óðîí èçâíå (íàïðèìåð èç Gun.cs)
-    // source — weaponEffect — EffectData îò îðóæèÿ (åñëè åñòü)
+    // source  weaponEffect  EffectData îò îðóæèÿ (åñëè åñòü)
     public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false)
     {
-        if (isDead || damage <= 0f) return;
+        ApplyDamageWithProcs(damage, weaponEffect, isCrit, ProcTrigger.OnHit);
+    }
 
-        float healthBefore = currentHealth;
-        bool wasAlive = healthBefore > 0f;
+    static EffectData WrapEntries(List<EffectEntry> list)
+    {
+        EffectData data = ScriptableObject.CreateInstance<EffectData>();
+        data.entries = list.ToArray();
+        return data;
+    }
 
-        float finalDamage = Mathf.Min(damage, Mathf.Max(0f, healthBefore));
-        currentHealth = Mathf.Max(0f, healthBefore - damage);
+    void ApplyDamageWithProcs(float damage, EffectData weaponEffect, bool isCrit, ProcTrigger incomingTrigger)
+    {
+        InternalApplyDamage(damage);
 
-        bool didKill = wasAlive && currentHealth <= 0f;
+        if (ProcManager.Instance == null) return;
 
-        ProcContext ctx = new ProcContext
+        ProcContext incomingCtx = new ProcContext
         {
-            damageDone = finalDamage,
+            trigger = incomingTrigger,
+            damageDone = damage,
             isCrit = isCrit,
             hitLayer = gameObject.layer,
             didKill = didKill,
@@ -131,16 +132,17 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             damageType = damageType
         };
 
-        // ýôôåêòû îðóæèÿ
         if (weaponEffect != null)
-            ProcManager.Instance.QueueProc(this, weaponEffect, ctx);
+            ProcManager.Instance.QueueProc(this, weaponEffect, incomingCtx);
 
-        // ýôôåêòû ïåðñîíàæà (ÂÎÒ ÎÍÈ!)
         if (character != null && character.activeEffects != null && character.activeEffects.Count > 0)
+            ProcManager.Instance.QueueProc(this, WrapEntries(character.activeEffects), incomingCtx);
+
+        if (onDamageEffects != null)
         {
-            ProcManager.Instance.QueueProc(attacker, this, weaponEffect, ctx, EffectTriggerType.OnHit);
-            if (didKill)
-                ProcManager.Instance.QueueProc(attacker, this, weaponEffect, ctx, EffectTriggerType.OnKill);
+            ProcContext damagedCtx = incomingCtx;
+            damagedCtx.trigger = ProcTrigger.OnDamaged;
+            ProcManager.Instance.QueueProc(this, onDamageEffects, damagedCtx);
         }
 
         if (attacker != null && attacker.activeEffects != null && attacker.activeEffects.Count > 0 && ProcManager.Instance != null)
@@ -158,15 +160,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             Die(ctx);
     }
 
-    static EffectData WrapEntries(List<EffectEntry> list)
-    {
-        EffectData data = ScriptableObject.CreateInstance<EffectData>();
-        data.entries = list.ToArray();
-        return data;
-    }
 
-
-    // Âíóòðåííåå ïðèìåíåíèå çäîðîâüÿ — íåáîëüøàÿ âûäåëåííàÿ ôóíêöèÿ, ÷òîáû EffectAction ìîã íàïðÿìóþ íàíåñòè äîï. óðîí
+    // Âíóòðåííåå ïðèìåíåíèå çäîðîâüÿ  íåáîëüøàÿ âûäåëåííàÿ ôóíêöèÿ, ÷òîáû EffectAction ìîã íàïðÿìóþ íàíåñòè äîï. óðîí
     public void InternalApplyDamage(float damage)
     {
         currentHealth -= damage;
