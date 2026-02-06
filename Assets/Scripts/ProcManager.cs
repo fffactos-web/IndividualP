@@ -13,13 +13,27 @@ public class ProcManager : MonoBehaviour
         public ProcContext ctx;
     }
 
-    // очередь без постоянно создаваемых объектов: List<ProcEvent> хранит struct'ы
+    struct CooldownKey
+    {
+        public int targetId;
+        public int actionInstanceId;
+        public int triggerType;
+
+        public CooldownKey(int targetId, int actionInstanceId, int triggerType)
+        {
+            this.targetId = targetId;
+            this.actionInstanceId = actionInstanceId;
+            this.triggerType = triggerType;
+        }
+    }
+
+    // Р’РјРµСЃС‚Рѕ РІС‹РґРµР»РµРЅРёР№/РєРѕРїРёСЂРѕРІР°РЅРёР№ РїРѕРґ РєР°Р¶РґС‹Р№ С‚РёРє: List<ProcEvent> + struct'С‹
     List<ProcEvent> queue = new List<ProcEvent>(256);
 
-    // для cooldown'ов: (targetInstanceId -> entryIndex -> lastTime)
-    Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
+    // РљСѓР»РґР°СѓРЅС‹: (targetId + actionInstanceId + triggerType) -> lastTime
+    Dictionary<CooldownKey, float> lastTriggerTimeByKey = new Dictionary<CooldownKey, float>();
 
-    [Tooltip("Макс. procs обработать за кадр")]
+    [Tooltip("РњР°РєСЃ. procs РѕР±СЂР°Р±РѕС‚Р°РµС‚СЃСЏ Р·Р° РєР°РґСЂ")]
     public int maxProcessPerFrame = 128;
 
     void Awake()
@@ -45,15 +59,7 @@ public class ProcManager : MonoBehaviour
         if (ev.effects == null || ev.effects.entries == null || ev.target == null) return;
 
         int targetId = ev.target.GetInstanceID();
-
-        if (!lastTriggerTime.TryGetValue(targetId, out float[] timers))
-        {
-            timers = new float[ev.effects.entries.Length];
-            for (int k = 0; k < timers.Length; k++)
-                timers[k] = -9999f;
-
-            lastTriggerTime[targetId] = timers;
-        }
+        int triggerType = ev.ctx.hitLayer;
 
         for (int i = 0; i < ev.effects.entries.Length; i++)
         {
@@ -63,32 +69,30 @@ public class ProcManager : MonoBehaviour
 
             if (entry.cooldownSeconds > 0f)
             {
-                if (i >= timers.Length)
+                int actionInstanceId = entry.action.GetInstanceID();
+                var cooldownKey = new CooldownKey(targetId, actionInstanceId, triggerType);
+
+                if (lastTriggerTimeByKey.TryGetValue(cooldownKey, out float lastTriggerTime) &&
+                    Time.time - lastTriggerTime < entry.cooldownSeconds)
                 {
-                    // если меняется длина entries между вызовами — обновим массив
-                    var newArr = new float[ev.effects.entries.Length];
-                    for (int j = 0; j < Mathf.Min(newArr.Length, timers.Length); j++) newArr[j] = timers[j];
-                    for (int j = timers.Length; j < newArr.Length; j++) newArr[j] = -9999f;
-                    timers = newArr;
-                    lastTriggerTime[targetId] = timers;
+                    continue;
                 }
 
-                if (Time.time - timers[i] < entry.cooldownSeconds) continue;
-                timers[i] = Time.time;
+                lastTriggerTimeByKey[cooldownKey] = Time.time;
             }
 
-            // Выполняем действие — Action сам знает, что делает (пулл, доп. урон и т.п.)
+            // РџРµСЂРµРґР°С‘Рј РєРѕРЅС‚РµРєСЃС‚ РІ Action РґР»СЏ СѓСЃР»РѕРІРёР№, РґРѕРї. Р»РѕРіРёРєРё (РєСЂРёС‚, СѓСЂРѕРЅ Рё С‚.Рґ.)
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
-    // Вызов — можно делать из любого места; передаём ссылки, struct-контекст — минимум GC
-    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx) 
+    // Р’С‹Р·РѕРІ РёР· РјРµСЃС‚Р°, РіРґРµ РІС‹ Р·РЅР°РµС‚Рµ С†РµР»СЊ; РѕС‡РµСЂРµРґСЊ РїР°РєРµС‚РёС‚, struct-СЌР»РµРјРµРЅС‚С‹ Рё РјРёРЅРёРјСѓРј GC
+    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx)
     {
         if (effects == null || target == null) return;
-        // простая защита от переполнения
+        // Р·Р°С‰РёС‚Р° РѕС‡РµСЂРµРґРё РѕС‚ СЂР°Р·СЂР°СЃС‚Р°РЅРёСЏ
         if (queue.Count > 20000) return;
 
-        queue.Add(new ProcEvent {target = target, effects = effects, ctx = ctx });
+        queue.Add(new ProcEvent { target = target, effects = effects, ctx = ctx });
     }
 }
