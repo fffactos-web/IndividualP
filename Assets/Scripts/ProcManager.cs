@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class ProcManager : MonoBehaviour
@@ -10,6 +11,8 @@ public class ProcManager : MonoBehaviour
         public Character_Properties source;
         public Zombie_Properies target;
         public EffectData effects;
+        public IReadOnlyList<EffectEntry> runtimeEntries;
+        public int entriesKey;
         public ProcContext ctx;
     }
 
@@ -36,7 +39,7 @@ public class ProcManager : MonoBehaviour
     [Tooltip("Макс. procs обработается за кадр")]
     public int maxProcessPerFrame = 128;
 
-    void Awake()
+        queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
     {
         if (Instance != null && Instance != this) Destroy(gameObject);
         else Instance = this;
@@ -51,20 +54,58 @@ public class ProcManager : MonoBehaviour
             var ev = queue[i];
             ProcessEvent(ref ev);
         }
+
         if (toProcess > 0) queue.RemoveRange(0, toProcess);
     }
 
     void ProcessEvent(ref ProcEvent ev)
     {
-        if (ev.effects == null || ev.effects.entries == null || ev.target == null) return;
+        if (ev.target == null) return;
+
+        IReadOnlyList<EffectEntry> entries = GetEntries(ev);
+        if (entries == null || entries.Count == 0) return;
+
+        float[] timers = GetTimers(ev.target.GetInstanceID(), ev.entriesKey, entries.Count);
+        ProcessEntries(entries, timers, ref ev);
+    }
+
+    IReadOnlyList<EffectEntry> GetEntries(in ProcEvent ev)
+    {
+        if (ev.effects != null && ev.effects.entries != null)
+            return ev.effects.entries;
+
+        return ev.runtimeEntries;
+    }
+
+    float[] GetTimers(int targetId, int entriesKey, int requiredLength)
+    {
+        if (!lastTriggerTime.TryGetValue(targetId, out var timersByEntries))
+        {
+            timersByEntries = new Dictionary<int, float[]>();
+            lastTriggerTime[targetId] = timersByEntries;
+        }
 
         int targetId = ev.target.GetInstanceID();
         int triggerType = ev.ctx.hitLayer;
 
-        for (int i = 0; i < ev.effects.entries.Length; i++)
+        return timers;
+    }
+
+    static float[] CreateTimerArray(int length)
+    {
+        var arr = new float[length];
+        for (int i = 0; i < arr.Length; i++)
+            arr[i] = -9999f;
+
+        return arr;
+    }
+
+    void ProcessEntries(IReadOnlyList<EffectEntry> entries, float[] timers, ref ProcEvent ev)
+    {
+        for (int i = 0; i < entries.Count; i++)
         {
-            var entry = ev.effects.entries[i];
-            if (entry.action == null) continue;
+            var entry = entries[i];
+            if (entry == null || entry.action == null) continue;
             if (Random.value > entry.procChance) continue;
 
             if (entry.cooldownSeconds > 0f)
