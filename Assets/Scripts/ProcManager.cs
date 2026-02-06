@@ -16,12 +16,27 @@ public class ProcManager : MonoBehaviour
         public ProcContext ctx;
     }
 
+    struct CooldownKey
+    {
+        public int targetId;
+        public int actionInstanceId;
+        public int triggerType;
+
+        public CooldownKey(int targetId, int actionInstanceId, int triggerType)
+        {
+            this.targetId = targetId;
+            this.actionInstanceId = actionInstanceId;
+            this.triggerType = triggerType;
+        }
+    }
+
+    // Вместо выделений/копирований под каждый тик: List<ProcEvent> + struct'ы
     List<ProcEvent> queue = new List<ProcEvent>(256);
 
-    // targetInstanceId -> entriesKey -> lastTimeByEntryIndex
-    readonly Dictionary<int, Dictionary<int, float[]>> lastTriggerTime = new Dictionary<int, Dictionary<int, float[]>>();
+    // Кулдауны: (targetId + actionInstanceId + triggerType) -> lastTime
+    Dictionary<CooldownKey, float> lastTriggerTimeByKey = new Dictionary<CooldownKey, float>();
 
-    [Tooltip("Макс. procs обработок за кадр")]
+    [Tooltip("Макс. procs обработается за кадр")]
     public int maxProcessPerFrame = 128;
 
         queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
@@ -70,22 +85,8 @@ public class ProcManager : MonoBehaviour
             lastTriggerTime[targetId] = timersByEntries;
         }
 
-        if (!timersByEntries.TryGetValue(entriesKey, out var timers))
-        {
-            timers = CreateTimerArray(requiredLength);
-            timersByEntries[entriesKey] = timers;
-            return timers;
-        }
-
-        if (timers.Length < requiredLength)
-        {
-            var newArr = CreateTimerArray(requiredLength);
-            for (int i = 0; i < timers.Length; i++)
-                newArr[i] = timers[i];
-
-            timers = newArr;
-            timersByEntries[entriesKey] = timers;
-        }
+        int targetId = ev.target.GetInstanceID();
+        int triggerType = ev.ctx.hitLayer;
 
         return timers;
     }
@@ -109,44 +110,30 @@ public class ProcManager : MonoBehaviour
 
             if (entry.cooldownSeconds > 0f)
             {
-                if (Time.time - timers[i] < entry.cooldownSeconds) continue;
-                timers[i] = Time.time;
+                int actionInstanceId = entry.action.GetInstanceID();
+                var cooldownKey = new CooldownKey(targetId, actionInstanceId, triggerType);
+
+                if (lastTriggerTimeByKey.TryGetValue(cooldownKey, out float lastTriggerTime) &&
+                    Time.time - lastTriggerTime < entry.cooldownSeconds)
+                {
+                    continue;
+                }
+
+                lastTriggerTimeByKey[cooldownKey] = Time.time;
             }
 
+            // Передаём контекст в Action для условий, доп. логики (крит, урон и т.д.)
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
+    // Вызов из места, где вы знаете цель; очередь пакетит, struct-элементы и минимум GC
     public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx)
     {
-        if (effects == null || effects.entries == null || target == null) return;
+        if (effects == null || target == null) return;
+        // защита очереди от разрастания
         if (queue.Count > 20000) return;
 
-        queue.Add(new ProcEvent
-        {
-            target = target,
-            effects = effects,
-            entriesKey = effects.GetInstanceID(),
-            ctx = ctx
-        });
-    }
-
-    public void QueueProc(Zombie_Properies target, IReadOnlyList<EffectEntry> effects, ProcContext ctx)
-    {
-        if (effects == null || effects.Count == 0 || target == null) return;
-        if (queue.Count > 20000) return;
-
-        queue.Add(new ProcEvent
-        {
-            target = target,
-            runtimeEntries = effects,
-            entriesKey = RuntimeHelpers.GetHashCode(effects),
-            ctx = ctx
-        });
-    }
-
-    public void QueueProc(Zombie_Properies target, List<EffectEntry> effects, ProcContext ctx)
-    {
-        QueueProc(target, (IReadOnlyList<EffectEntry>)effects, ctx);
+        queue.Add(new ProcEvent { target = target, effects = effects, ctx = ctx });
     }
 }
