@@ -12,10 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f76e9cc93186ada4aa97b7cf99560355, type: 3}
   m_Name: Poison Amulet
   m_EditorClassIdentifier: 
-  itemName: NewItem
-  description: 
+  itemName: Poison Amulet
+  description: Applies poison on hit.
   icon: {fileID: 0}
   shopCost: 0
   statModifiers: []
-  effects: []
+  effects:
+  - trigger: 1
+    procChance: 1
+    action: {fileID: 11400000, guid: 789ef6d6b1cdba5499ca50232236e486, type: 2}
+    cooldownSeconds: 0
   baseDropChance: 0.1
