@@ -135,12 +135,16 @@ MonoBehaviour:
   dmgMultiplier: 0
   attackSpeedMultiplier: 0
   critDmgMultiplier: 0
+  radius: 5
+  isPiercing: 0
   firePoint: {fileID: 8127435238391112261}
-  shotEffect: {fileID: 6980259576133684760, guid: 1f58a1dea6bbd9347843e4935585e6a2, type: 3}
-  impactEffect: {fileID: 3077343761403282166, guid: f78aaaec3b393e24ca74cd6de8194347, type: 3}
-  damagePopupp: {fileID: 6869258280587037906, guid: 44be87c42e9b03a43a973e93e86b4d90, type: 3}
   cdOffset: 6
-  maxEffects: 50
+  pierceLine: {fileID: 0}
+  pierceVisualTime: 0.07
+  hitMask:
+    serializedVersion: 2
+    m_Bits: 439
+  modifiers: 0
 --- !u!1 &5003342679363754947
 GameObject:
   m_ObjectHideFlags: 0

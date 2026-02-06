@@ -1,75 +1,127 @@
 using DG.Tweening;
-using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.TextCore.Text;
 
 public class Character_Properties : MonoBehaviour, IGemCollector
 {
-    [SerializeField]
-    GameObject[] dieEffect;
-    [SerializeField]
-    GameObject[] guns;
+    [Header("Base Damage")]
+    public float baseDamage;
+    public float baseAttackSpeed;
+    public float baseCritChance;
+    public float baseCritDamage;
+    public float baseArmorPenetration;
 
-    [SerializeField]
-    DiePanel diePanel;
+    [Header("Base Health")]
+    public float baseMaxHealth;
+    public float baseHealthRegen;
 
-    [SerializeField]
-    UnityEngine.UI.Slider[] healthBars;
+    [Header("Base Defense")]
+    public float baseArmor;
+    public float baseResistance;
 
-    [SerializeField]
-    UnityEngine.UI.Slider[] healthBarForeground;
+    [Header("Base Sustain")]
+    public float baseLifeSteal;
 
-    [SerializeField]
-    Transform gunHolder;
-    [SerializeField]
-    Transform camGunHolder;
+    [Header("Base Movement")]
+    public float baseMoveSpeed;
+    public float baseDashSpeed;
+    public int baseExtraJumps;
 
-    public float maxHealth;
-    public float dmg;
+    [Header("Base Effects")]
+    public List<EffectEntry> activeEffects = new List<EffectEntry>();
 
-    public float dmgMultiplier;
-    public float attackSpeedMultiplier;
-    public float critDmgMultiplier;
 
-    public float maxHealthMultiplier;
+    [Header("Base Area")]
+    public float baseAttackRadius;
 
-    public float speedMultiplier;
-    public float runSpeedMultiplier;
+    [Header("Global")]
+    public float globalDamageMultiplier;
+    public float globalSpeedMultiplier;
 
-    float currentHealth;
+    // ===== Bonuses (from items, buffs, etc.) =====
 
-    TextMeshProUGUI gemStatus;
+    [Header("Bonuses")]
+    public float damageBonus;
+    public float attackSpeedBonus;
+    public float critChanceBonus;
+    public float critDamageBonus;
+    public float armorPenetrationBonus;
 
-    bool healthChanged;
-    float timeWithoutHealthChanhges = 0f;
+    public float maxHealthBonus;
+    public float healthRegenBonus;
 
-    public float difficulty = 1;
+    public float armorBonus;
+    public float resistanceBonus;
+
+    public float lifeStealBonus;
+
+    public float moveSpeedBonus;
+    public float dashSpeedBonus;
+    public int extraJumpsBonus;
+
+    public float procChanceBonus;
+    public float procPowerBonus;
+    public int procCountBonus;
+
+    public float attackRadiusBonus;
+
+    // ===== Final calculated stats =====
+
+    [HideInInspector] public float damage;
+    [HideInInspector] public float attackSpeed;
+    [HideInInspector] public float critChance;
+    [HideInInspector] public float critDamage;
+    [HideInInspector] public float armorPenetration;
+
+    [HideInInspector] public float maxHealth;
+    [HideInInspector] public float healthRegen;
+    [HideInInspector] public float currentHealth;
+
+    [HideInInspector] public float armor;
+    [HideInInspector] public float resistance;
+
+    [HideInInspector] public float lifeSteal;
+
+    [HideInInspector] public float moveSpeed;
+    [HideInInspector] public float dashSpeed;
+    [HideInInspector] public int extraJumps;
+
+    [HideInInspector] public float procChance;
+    [HideInInspector] public float procPower;
+    [HideInInspector] public int procCount;
+
+    [HideInInspector] public float attackRadius;
+
+    [Header("Meta")]
     public float kills;
     public float gems;
+    public float difficulty;
 
-    public enum property
+    [SerializeField] GameObject[] dieEffect;
+    [SerializeField] GameObject[] guns;
+    [SerializeField] Transform gunHolder;
+    [SerializeField] Transform camGunHolder;
+    [SerializeField] DiePanel diePanel;
+    [SerializeField] UnityEngine.UI.Slider[] healthBars;
+    [SerializeField] UnityEngine.UI.Slider[] healthBarForeground;
+
+    TextMeshProUGUI gemStatus;
+    bool healthChanged;
+    float timeWithoutHealthChanges;
+
+    void Awake()
     {
-        dmgMultiplier,
-        attackSpeedMultiplier,
-        critDmgMultiplier,
-
-        maxHealthMultiplier,
-
-        speedMultiplier,
-        runSpeedMultiplier
-    }
-
-    private void Awake()
-    {
-        Instantiate(guns[0], camGunHolder);
         Instantiate(guns[0], gunHolder);
+        Instantiate(guns[0], camGunHolder);
 
-        ResetProperties();
+        RecalculateStats();
+        currentHealth = maxHealth;
+
         ChangeGunProperties();
 
-        diePanel.gameObject.SetActive(false);
-        gemStatus = GameObject.FindGameObjectWithTag("Gem Status").GetComponent<TextMeshProUGUI>();
+        gemStatus = GameObject.FindGameObjectWithTag("Gem Status")
+            .GetComponent<TextMeshProUGUI>();
 
         foreach (var bar in healthBars)
         {
@@ -83,99 +135,86 @@ public class Character_Properties : MonoBehaviour, IGemCollector
         }
     }
 
-    public void ResetProperties()
+    public void RecalculateStats()
     {
-        maxHealth += maxHealthMultiplier;
-        currentHealth = maxHealth;
-    }
+        damage = (baseDamage + damageBonus) * (1 + globalDamageMultiplier);
+        attackSpeed = (baseAttackSpeed + attackSpeedBonus) * (1 + globalSpeedMultiplier);
 
-    public void ChangeGun(int id)
-    {
-        Destroy(gunHolder.GetChild(0));
-        Instantiate(guns[id], gunHolder);
+        critChance = Mathf.Clamp01(baseCritChance + critChanceBonus);
+        critDamage = baseCritDamage + critDamageBonus;
+        armorPenetration = baseArmorPenetration + armorPenetrationBonus;
 
-        Destroy(camGunHolder.GetChild(0));
-        Instantiate(guns[id], camGunHolder);
+        maxHealth = baseMaxHealth + maxHealthBonus;
+        healthRegen = baseHealthRegen + healthRegenBonus;
+
+        armor = baseArmor + armorBonus;
+        resistance = baseResistance + resistanceBonus;
+
+        lifeSteal = baseLifeSteal + lifeStealBonus;
+
+        moveSpeed = (baseMoveSpeed + moveSpeedBonus) * (1 + globalSpeedMultiplier);
+        dashSpeed = (baseDashSpeed + dashSpeedBonus) * (1 + globalSpeedMultiplier);
+        extraJumps = baseExtraJumps + extraJumpsBonus;
+
+        attackRadius = baseAttackRadius + attackRadiusBonus;
     }
 
     public void ChangeGunProperties()
     {
-        gunHolder.GetComponentInChildren<Gun>().critDmgMultiplier = critDmgMultiplier;
-        gunHolder.GetComponentInChildren<Gun>().attackSpeedMultiplier = attackSpeedMultiplier;
-        gunHolder.GetComponentInChildren<Gun>().dmgMultiplier = dmgMultiplier;
-        gunHolder.GetComponentInChildren<Gun>().dmg = dmg;
+        var gun = gunHolder.GetComponentInChildren<Gun>();
+        var camGun = camGunHolder.GetComponentInChildren<Gun>();
 
-        camGunHolder.GetComponentInChildren<Gun>().critDmgMultiplier = critDmgMultiplier;
-        camGunHolder.GetComponentInChildren<Gun>().attackSpeedMultiplier = attackSpeedMultiplier;
-        camGunHolder.GetComponentInChildren<Gun>().dmgMultiplier = dmgMultiplier;
-        camGunHolder.GetComponentInChildren<Gun>().dmg = dmg;
-
+        gun.SetOwner(this);
+        camGun.SetOwner(this);
     }
 
-    public void ChangeProperty(float value, property property)
+    void Update()
     {
-        switch (property)
+        if(currentHealth != maxHealth)
         {
-            case property.dmgMultiplier:
-                dmgMultiplier += value;
-                break;
-            case property.attackSpeedMultiplier:
-                attackSpeedMultiplier += value;
-                break;
-            case property.maxHealthMultiplier:
-                maxHealthMultiplier += value;
-                break;
-            case property.speedMultiplier:
-                speedMultiplier += value;
-                break;
-            case property.critDmgMultiplier:
-                critDmgMultiplier += value;
-                break;
-            default:
-                break;
-        }
-    }
-
-    private void Update()
-    {
-        timeWithoutHealthChanhges += Time.deltaTime;
-
-        if(healthChanged && timeWithoutHealthChanhges > 1f)
-        {
-            foreach (var bar in healthBars)
+            currentHealth = Mathf.Min(currentHealth + healthRegen * Time.deltaTime, maxHealth);
+            foreach (var bar in healthBarForeground)
             {
-                bar.DOValue(currentHealth, 1f);
-                timeWithoutHealthChanhges = 0f;
+                bar.maxValue = maxHealth;
+                bar.value = currentHealth;
             }
         }
+
+        timeWithoutHealthChanges += Time.deltaTime;
+        if (healthChanged && timeWithoutHealthChanges > 1f)
+        {
+            foreach (var bar in healthBars)
+                bar.DOValue(currentHealth, 1f);
+            healthChanged = false;
+        }
     }
 
-    public void AddGems(int amount)
+    public void GetDamage(float dmg)
     {
-        gems += amount; 
-        int gemPlus = Convert.ToInt32(UnityEngine.Random.Range(5, 20));
-        gems += gemPlus;
-        gemStatus.text = (gems + gemPlus).ToString();
-    }
-
-    public void GetDamage(float damage)
-    {
-        currentHealth -= damage;
+        currentHealth -= dmg;
         healthChanged = true;
+        timeWithoutHealthChanges = 0f;
+
         foreach (var bar in healthBarForeground)
             bar.value = currentHealth;
-        timeWithoutHealthChanhges = 0f;
+
         if (currentHealth <= 0)
             Die();
     }
 
-    public void Die()
+    public void AddGems(int amount)
+    {
+        gems += amount;
+        gemStatus.text = gems.ToString();
+    }
+
+    void Die()
     {
         foreach (var effect in dieEffect)
-            Instantiate(effect, transform.position + new Vector3(0, 1f, 0f), Quaternion.identity);
-        ResetProperties();
+            Instantiate(effect, transform.position + Vector3.up, Quaternion.identity);
+
         diePanel.showDiePanel();
-        UnityEngine.Cursor.lockState = CursorLockMode.None;
+        Cursor.lockState = CursorLockMode.None;
         gameObject.SetActive(false);
     }
 }

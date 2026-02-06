@@ -16788,6 +16788,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d83329bcee0b62845b07ceff1e82697d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackDistance: 7
   damage: 5
 --- !u!114 &4790690852795589655
 MonoBehaviour:
@@ -16806,6 +16807,10 @@ MonoBehaviour:
   stackResetTime: 0.5
   spawner: {fileID: 0}
   dieEffect: {fileID: 0}
+  baseGemCount: 2
+  gemCountPerDifficulty: 2
+  coneHeight: 1.2
+  coneRadius: 1
 --- !u!136 &1442027657877851453
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -16826,9 +16831,9 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.007
-  m_Height: 0.04
+  m_Height: 0.028345333
   m_Direction: 2
-  m_Center: {x: -0.000014704176, y: 0.00009416684, z: 0.017936427}
+  m_Center: {x: -0.000014704021, y: 0.00009416818, z: 0.012109147}
 --- !u!1 &5198515536755668044
 GameObject:
   m_ObjectHideFlags: 0

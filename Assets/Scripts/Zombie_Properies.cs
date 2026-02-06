@@ -1,5 +1,9 @@
+using DG.Tweening;
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+
 
 public class Zombie_Properies : MonoBehaviour, IPoolable
 {
@@ -24,17 +28,119 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     [SerializeField] private int gemCountPerDifficulty = 2;
 
     [SerializeField] private float coneHeight = 1.2f;
-    [SerializeField] private float coneRadius = 1f;
+    [SerializeField] private float coneRadius = 8f;
+
+    [Header("Drops / Effects")]
+    public EffectData onDamageEffects;
+
+    Dictionary<int, Coroutine> activeDots = new Dictionary<int, Coroutine>();
+
+    static int s_dotCounter = 0;
+    static int NextDotId() => ++s_dotCounter;
 
     void Awake()
     {
-        killsStatus = GameObject.FindGameObjectWithTag("Kills Status").GetComponent<TextMeshProUGUI>();
-        character = GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>();
-        initialLocalRotation = transform.localRotation;
-        initialLocalPosition = transform.localPosition;
+        currentHealth = maxHealth;
     }
 
-    // ===== POOL =====
+    // effectKey Ч ключ эффекта (обычно GetInstanceID() ассета)
+    public void ApplyDot(int effectKey, float dps, float duration, float tickInterval, Character_Properties source, Poison.StackingMode stackingMode)
+    {
+        if (dps <= 0f || duration <= 0f) return;
+
+        // «ащитные меры
+        if (tickInterval <= 0f) tickInterval = 0.1f;
+        if (tickInterval > duration) tickInterval = duration;
+
+        if (stackingMode == Poison.StackingMode.Refresh)
+        {
+            // если уже есть Ч перезапускаем корутину (обновл€ем длительность)
+            if (activeDots.TryGetValue(effectKey, out Coroutine existing))
+            {
+                StopCoroutine(existing);
+                activeDots.Remove(effectKey);
+            }
+            Coroutine c = StartCoroutine(DotCoroutine(effectKey, dps, duration, tickInterval, source));
+            activeDots[effectKey] = c;
+        }
+        else if (stackingMode == Poison.StackingMode.Ignore)
+        {
+            if (activeDots.ContainsKey(effectKey)) return;
+            Coroutine c = StartCoroutine(DotCoroutine(effectKey, dps, duration, tickInterval, source));
+            activeDots[effectKey] = c;
+        }
+        else // Stack
+        {
+            int newKey = NextDotId();
+            Coroutine c = StartCoroutine(DotCoroutine(newKey, dps, duration, tickInterval, source));
+            activeDots[newKey] = c;
+        }
+    }
+
+    IEnumerator DotCoroutine(int key, float dps, float duration, float tickInterval, Character_Properties source)
+    {
+        float remaining = duration;
+        // урон в каждом тике
+        float dmgPerTick = dps * tickInterval;
+
+        while (remaining > 0f)
+        {
+            // нанос€ урон, используем внутренний вызов, чтобы не ставить новые proc'ы и не вводить рекурсию
+            InternalApplyDamage(dmgPerTick);
+
+            remaining -= tickInterval;
+            if (remaining <= 0f) break;
+            yield return new WaitForSeconds(tickInterval);
+        }
+
+        // удал€ем запись
+        activeDots.Remove(key);
+    }
+
+
+    // Ётот метод должен вызыватьс€ когда наноситс€ урон извне (например из Gun.cs)
+    // source Ч weaponEffect Ч EffectData от оружи€ (если есть)
+    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false)
+    {
+        InternalApplyDamage(damage);
+
+        ProcContext ctx = new ProcContext
+        {
+            damageDone = damage,
+            isCrit = isCrit,
+            hitLayer = gameObject.layer
+        };
+
+        // эффекты оружи€
+        if (weaponEffect != null)
+            ProcManager.Instance.QueueProc(this, weaponEffect, ctx);
+
+        // эффекты персонажа (¬ќ“ ќЌ»!)
+        if (character != null && character.activeEffects != null && character.activeEffects.Count > 0)
+        {
+            ProcManager.Instance.QueueProc(this, WrapEntries(character.activeEffects), ctx);
+        }
+    }
+
+    static EffectData WrapEntries(List<EffectEntry> list)
+    {
+        EffectData data = ScriptableObject.CreateInstance<EffectData>();
+        data.entries = list.ToArray();
+        return data;
+    }
+
+
+    // ¬нутреннее применение здоровь€ Ч небольша€ выделенна€ функци€, чтобы EffectAction мог напр€мую нанести доп. урон
+    public void InternalApplyDamage(float damage)
+    {
+        currentHealth -= damage;
+        // тут можешь добавить всплывающую надпись урона, звук, анимацию
+        if (currentHealth <= 0f)
+        {
+            Die();
+        }
+        ShowDamage(damage);
+    }
 
     public void OnSpawn()
     {
@@ -61,18 +167,6 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         transform.localRotation = initialLocalRotation;
         transform.localPosition = initialLocalPosition;
     }
-
-    public void GetDamage(float damage)
-    {
-        currentHealth -= damage;
-
-        ShowDamage(damage);
-
-        if (currentHealth <= 0)
-            Die();
-    }
-
-    // ===== DAMAGE STACK =====
 
     void ShowDamage(float damage)
     {
@@ -127,12 +221,15 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         killsStatus.text = (character.kills + 1).ToString();
         ResetProperties();
 
+        foreach (var c in activeDots.Values)
+            if (c != null) StopCoroutine(c);
+        activeDots.Clear();
+
         PoolManager.I.deathEffectPool.Spawn(
             transform.position + Vector3.up * 0.8f,
             Quaternion.identity
         );
 
-        // Zombie_Properies lives on a child of the pooled prefab. We must return the pooled root object.
         PoolManager.I.followerZombiePool.Despawn(transform.root.gameObject);
     }
 
@@ -140,21 +237,20 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     {
         int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
 
+        Vector3 origin = transform.position + Vector3.up * 0.5f;
+
         for (int i = 0; i < gemCount; i++)
         {
             float angle = Random.Range(0f, Mathf.PI * 2f);
-            float radius = Random.Range(0f, coneRadius);
-            float height = Random.Range(0.3f, coneHeight);
+            float radius = Random.Range(coneRadius/2, coneRadius);
 
-            Vector3 offset = new Vector3(
-                Mathf.Cos(angle) * radius,
-                height,
-                Mathf.Sin(angle) * radius
-            );
+            Vector3 horizontal = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
 
-            PoolManager.I.gemPool.Spawn(transform.position + offset,Quaternion.identity);
+            Vector3 targetPos = origin + horizontal;
+
+            GameObject gem = PoolManager.I.gemPool.Spawn(origin, Quaternion.identity);
+
+            gem.transform.DOJump(targetPos, Random.Range(2f, 4f), 1, Random.Range(1f, 2f), false).SetEase(Ease.OutQuad);
         }
     }
-
-
 }
