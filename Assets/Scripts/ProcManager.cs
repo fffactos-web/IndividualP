@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class ProcManager : MonoBehaviour
@@ -10,7 +11,10 @@ public class ProcManager : MonoBehaviour
         public Character_Properties source;
         public Zombie_Properies target;
         public EffectData effects;
+        public IReadOnlyList<EffectEntry> runtimeEntries;
+        public int entriesKey;
         public ProcContext ctx;
+        public EffectTriggerType triggerType;
     }
 
     List<ProcEvent> queue = new List<ProcEvent>(256);
@@ -19,7 +23,7 @@ public class ProcManager : MonoBehaviour
     [Tooltip("Max procs processed per frame")]
     public int maxProcessPerFrame = 128;
 
-    void Awake()
+        queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
     {
         if (Instance != null && Instance != this) Destroy(gameObject);
         else Instance = this;
@@ -51,15 +55,37 @@ public class ProcManager : MonoBehaviour
             lastTriggerTime[targetId] = timers;
         }
 
-        for (int i = 0; i < ev.effects.entries.Length; i++)
+        int targetId = ev.target.GetInstanceID();
+        int triggerType = ev.ctx.hitLayer;
+
+        return timers;
+    }
+
+    static float[] CreateTimerArray(int length)
+    {
+        var arr = new float[length];
+        for (int i = 0; i < arr.Length; i++)
+            arr[i] = -9999f;
+
+        return arr;
+    }
+
+    void ProcessEntries(IReadOnlyList<EffectEntry> entries, float[] timers, ref ProcEvent ev)
+    {
+        for (int i = 0; i < entries.Count; i++)
         {
             var entry = ev.effects.entries[i];
             if (entry.action == null) continue;
+            if (entry.triggerType != ev.triggerType) continue;
             if (Random.value > entry.procChance) continue;
 
             if (entry.cooldownSeconds > 0f)
             {
-                if (i >= timers.Length)
+                int actionInstanceId = entry.action.GetInstanceID();
+                var cooldownKey = new CooldownKey(targetId, actionInstanceId, triggerType);
+
+                if (lastTriggerTimeByKey.TryGetValue(cooldownKey, out float lastTriggerTime) &&
+                    Time.time - lastTriggerTime < entry.cooldownSeconds)
                 {
                     var newArr = new float[ev.effects.entries.Length];
                     for (int j = 0; j < Mathf.Min(newArr.Length, timers.Length); j++) newArr[j] = timers[j];
@@ -68,8 +94,7 @@ public class ProcManager : MonoBehaviour
                     lastTriggerTime[targetId] = timers;
                 }
 
-                if (Time.time - timers[i] < entry.cooldownSeconds) continue;
-                timers[i] = Time.time;
+                lastTriggerTimeByKey[cooldownKey] = Time.time;
             }
 
             if (!entry.action.CanExecute(ev.source, ev.target, ev.ctx))

@@ -18,6 +18,12 @@ public class Rocket : MonoBehaviour, IPoolable
     bool canExplode;
 
     public EffectData effectData;
+    Character_Properties owner;
+
+    public void SetOwner(Character_Properties character)
+    {
+        owner = character;
+    }
 
     private void Awake()
     {
