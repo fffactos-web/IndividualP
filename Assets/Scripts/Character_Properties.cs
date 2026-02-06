@@ -164,6 +164,9 @@ public class Character_Properties : MonoBehaviour, IGemCollector
         var gun = gunHolder.GetComponentInChildren<Gun>();
         var camGun = camGunHolder.GetComponentInChildren<Gun>();
 
+        gun.effectData.entries = activeEffects.ToArray();
+        camGun.effectData.entries = activeEffects.ToArray();
+
         gun.SetOwner(this);
         camGun.SetOwner(this);
     }
