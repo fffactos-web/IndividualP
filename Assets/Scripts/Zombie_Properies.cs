@@ -80,12 +80,12 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     IEnumerator DotCoroutine(int key, float dps, float duration, float tickInterval, Character_Properties source)
     {
         float remaining = duration;
-    public void TakeDamage(float damage, EffectData weaponEffect, Character_Properties source, bool isCrit = false)
-            ProcManager.Instance.QueueProc(source, this, weaponEffect, ctx);
+        // óðîí â êàæäîì òèêå
+        float dmgPerTick = dps * tickInterval;
 
         if (source != null && source.activeEffects != null && source.activeEffects.Count > 0)
         {
-            ProcManager.Instance.QueueProc(source, this, WrapEntries(source.activeEffects), ctx);
+            // íàíîñÿ óðîí, èñïîëüçóåì âíóòðåííèé âûçîâ, ÷òîáû íå ñòàâèòü íîâûå proc'û è íå ââîäèòü ðåêóðñèþ
             InternalApplyDamage(dmgPerTick);
 
             remaining -= tickInterval;
@@ -93,14 +93,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             yield return new WaitForSeconds(tickInterval);
         }
 
-        // óäàëÿåì çàïèñü
-        activeDots.Remove(key);
-    }
-
-
-    // Ýòîò ìåòîä äîëæåí âûçûâàòüñÿ êîãäà íàíîñèòñÿ óðîí èçâíå (íàïðèìåð èç Gun.cs)
-    // source — weaponEffect — EffectData îò îðóæèÿ (åñëè åñòü)
-    public void TakeDamage(float damage, EffectData weaponEffect, bool isCrit = false)
+            ProcManager.Instance.QueueProc(this, character.activeEffects, ctx);
     {
         InternalApplyDamage(damage);
 

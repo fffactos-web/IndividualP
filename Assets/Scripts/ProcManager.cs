@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class ProcManager : MonoBehaviour
@@ -10,25 +11,18 @@ public class ProcManager : MonoBehaviour
         public Character_Properties source;
         public Zombie_Properies target;
         public EffectData effects;
+        public IReadOnlyList<EffectEntry> runtimeEntries;
+        public int entriesKey;
         public ProcContext ctx;
     }
 
-    // î÷åðåäü áåç ïîñòîÿííî ñîçäàâàåìûõ îáúåêòîâ: List<ProcEvent> õðàíèò struct'û
     List<ProcEvent> queue = new List<ProcEvent>(256);
 
-    // äëÿ cooldown'îâ: (targetInstanceId -> entryIndex -> lastTime)
-    Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
+    // targetInstanceId -> entriesKey -> lastTimeByEntryIndex
+    readonly Dictionary<int, Dictionary<int, float[]>> lastTriggerTime = new Dictionary<int, Dictionary<int, float[]>>();
 
-        Character_Properties resolvedSource = ev.source;
-        if (resolvedSource == null)
-        {
-            resolvedSource = FindFirstObjectByType<Character_Properties>();
-            if (resolvedSource != null)
-                Debug.LogWarning("ProcManager: QueueProc called without source. Using fallback Character_Properties.");
-        }
-
-            entry.action.Execute(resolvedSource, ev.target, ev.ctx);
-    public void QueueProc(Character_Properties source, Zombie_Properies target, EffectData effects, ProcContext ctx)
+    [Tooltip("Макс. procs обработок за кадр")]
+    public int maxProcessPerFrame = 128;
 
         queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
     {
@@ -45,58 +39,114 @@ public class ProcManager : MonoBehaviour
             var ev = queue[i];
             ProcessEvent(ref ev);
         }
+
         if (toProcess > 0) queue.RemoveRange(0, toProcess);
     }
 
     void ProcessEvent(ref ProcEvent ev)
     {
-        if (ev.effects == null || ev.effects.entries == null || ev.target == null) return;
+        if (ev.target == null) return;
 
-        int targetId = ev.target.GetInstanceID();
+        IReadOnlyList<EffectEntry> entries = GetEntries(ev);
+        if (entries == null || entries.Count == 0) return;
 
-        if (!lastTriggerTime.TryGetValue(targetId, out float[] timers))
+        float[] timers = GetTimers(ev.target.GetInstanceID(), ev.entriesKey, entries.Count);
+        ProcessEntries(entries, timers, ref ev);
+    }
+
+    IReadOnlyList<EffectEntry> GetEntries(in ProcEvent ev)
+    {
+        if (ev.effects != null && ev.effects.entries != null)
+            return ev.effects.entries;
+
+        return ev.runtimeEntries;
+    }
+
+    float[] GetTimers(int targetId, int entriesKey, int requiredLength)
+    {
+        if (!lastTriggerTime.TryGetValue(targetId, out var timersByEntries))
         {
-            timers = new float[ev.effects.entries.Length];
-            for (int k = 0; k < timers.Length; k++)
-                timers[k] = -9999f;
-
-            lastTriggerTime[targetId] = timers;
+            timersByEntries = new Dictionary<int, float[]>();
+            lastTriggerTime[targetId] = timersByEntries;
         }
 
-        for (int i = 0; i < ev.effects.entries.Length; i++)
+        if (!timersByEntries.TryGetValue(entriesKey, out var timers))
         {
-            var entry = ev.effects.entries[i];
-            if (entry.action == null) continue;
+            timers = CreateTimerArray(requiredLength);
+            timersByEntries[entriesKey] = timers;
+            return timers;
+        }
+
+        if (timers.Length < requiredLength)
+        {
+            var newArr = CreateTimerArray(requiredLength);
+            for (int i = 0; i < timers.Length; i++)
+                newArr[i] = timers[i];
+
+            timers = newArr;
+            timersByEntries[entriesKey] = timers;
+        }
+
+        return timers;
+    }
+
+    static float[] CreateTimerArray(int length)
+    {
+        var arr = new float[length];
+        for (int i = 0; i < arr.Length; i++)
+            arr[i] = -9999f;
+
+        return arr;
+    }
+
+    void ProcessEntries(IReadOnlyList<EffectEntry> entries, float[] timers, ref ProcEvent ev)
+    {
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            if (entry == null || entry.action == null) continue;
             if (Random.value > entry.procChance) continue;
 
             if (entry.cooldownSeconds > 0f)
             {
-                if (i >= timers.Length)
-                {
-                    // åñëè ìåíÿåòñÿ äëèíà entries ìåæäó âûçîâàìè — îáíîâèì ìàññèâ
-                    var newArr = new float[ev.effects.entries.Length];
-                    for (int j = 0; j < Mathf.Min(newArr.Length, timers.Length); j++) newArr[j] = timers[j];
-                    for (int j = timers.Length; j < newArr.Length; j++) newArr[j] = -9999f;
-                    timers = newArr;
-                    lastTriggerTime[targetId] = timers;
-                }
-
                 if (Time.time - timers[i] < entry.cooldownSeconds) continue;
                 timers[i] = Time.time;
             }
 
-            // Âûïîëíÿåì äåéñòâèå — Action ñàì çíàåò, ÷òî äåëàåò (ïóëë, äîï. óðîí è ò.ï.)
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
-    // Âûçîâ — ìîæíî äåëàòü èç ëþáîãî ìåñòà; ïåðåäà¸ì ññûëêè, struct-êîíòåêñò — ìèíèìóì GC
-    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx) 
+    public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx)
     {
-        if (effects == null || target == null) return;
-        // ïðîñòàÿ çàùèòà îò ïåðåïîëíåíèÿ
+        if (effects == null || effects.entries == null || target == null) return;
         if (queue.Count > 20000) return;
 
-        queue.Add(new ProcEvent {target = target, effects = effects, ctx = ctx });
+        queue.Add(new ProcEvent
+        {
+            target = target,
+            effects = effects,
+            entriesKey = effects.GetInstanceID(),
+            ctx = ctx
+        });
+    }
+
+    public void QueueProc(Zombie_Properies target, IReadOnlyList<EffectEntry> effects, ProcContext ctx)
+    {
+        if (effects == null || effects.Count == 0 || target == null) return;
+        if (queue.Count > 20000) return;
+
+        queue.Add(new ProcEvent
+        {
+            target = target,
+            runtimeEntries = effects,
+            entriesKey = RuntimeHelpers.GetHashCode(effects),
+            ctx = ctx
+        });
+    }
+
+    public void QueueProc(Zombie_Properies target, List<EffectEntry> effects, ProcContext ctx)
+    {
+        QueueProc(target, (IReadOnlyList<EffectEntry>)effects, ctx);
     }
 }
