@@ -13,16 +13,24 @@ public class ProcManager : MonoBehaviour
         public ProcContext ctx;
     }
 
-    // очередь без постоянно создаваемых объектов: List<ProcEvent> хранит struct'ы
+    // Г®Г·ГҐГ°ГҐГ¤Гј ГЎГҐГ§ ГЇГ®Г±ГІГ®ГїГ­Г­Г® Г±Г®Г§Г¤Г ГўГ ГҐГ¬Г»Гµ Г®ГЎГєГҐГЄГІГ®Гў: List<ProcEvent> ГµГ°Г Г­ГЁГІ struct'Г»
     List<ProcEvent> queue = new List<ProcEvent>(256);
 
-    // для cooldown'ов: (targetInstanceId -> entryIndex -> lastTime)
+    // Г¤Г«Гї cooldown'Г®Гў: (targetInstanceId -> entryIndex -> lastTime)
     Dictionary<int, float[]> lastTriggerTime = new Dictionary<int, float[]>();
 
-    [Tooltip("Макс. procs обработать за кадр")]
-    public int maxProcessPerFrame = 128;
+        Character_Properties resolvedSource = ev.source;
+        if (resolvedSource == null)
+        {
+            resolvedSource = FindFirstObjectByType<Character_Properties>();
+            if (resolvedSource != null)
+                Debug.LogWarning("ProcManager: QueueProc called without source. Using fallback Character_Properties.");
+        }
 
-    void Awake()
+            entry.action.Execute(resolvedSource, ev.target, ev.ctx);
+    public void QueueProc(Character_Properties source, Zombie_Properies target, EffectData effects, ProcContext ctx)
+
+        queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
     {
         if (Instance != null && Instance != this) Destroy(gameObject);
         else Instance = this;
@@ -65,7 +73,7 @@ public class ProcManager : MonoBehaviour
             {
                 if (i >= timers.Length)
                 {
-                    // если меняется длина entries между вызовами — обновим массив
+                    // ГҐГ±Г«ГЁ Г¬ГҐГ­ГїГҐГІГ±Гї Г¤Г«ГЁГ­Г  entries Г¬ГҐГ¦Г¤Гі ГўГ»Г§Г®ГўГ Г¬ГЁ вЂ” Г®ГЎГ­Г®ГўГЁГ¬ Г¬Г Г±Г±ГЁГў
                     var newArr = new float[ev.effects.entries.Length];
                     for (int j = 0; j < Mathf.Min(newArr.Length, timers.Length); j++) newArr[j] = timers[j];
                     for (int j = timers.Length; j < newArr.Length; j++) newArr[j] = -9999f;
@@ -77,16 +85,16 @@ public class ProcManager : MonoBehaviour
                 timers[i] = Time.time;
             }
 
-            // Выполняем действие — Action сам знает, что делает (пулл, доп. урон и т.п.)
+            // Г‚Г»ГЇГ®Г«Г­ГїГҐГ¬ Г¤ГҐГ©Г±ГІГўГЁГҐ вЂ” Action Г±Г Г¬ Г§Г­Г ГҐГІ, Г·ГІГ® Г¤ГҐГ«Г ГҐГІ (ГЇГіГ«Г«, Г¤Г®ГЇ. ГіГ°Г®Г­ ГЁ ГІ.ГЇ.)
             entry.action.Execute(ev.source, ev.target, ev.ctx);
         }
     }
 
-    // Вызов — можно делать из любого места; передаём ссылки, struct-контекст — минимум GC
+    // Г‚Г»Г§Г®Гў вЂ” Г¬Г®Г¦Г­Г® Г¤ГҐГ«Г ГІГј ГЁГ§ Г«ГѕГЎГ®ГЈГ® Г¬ГҐГ±ГІГ ; ГЇГҐГ°ГҐГ¤Г ВёГ¬ Г±Г±Г»Г«ГЄГЁ, struct-ГЄГ®Г­ГІГҐГЄГ±ГІ вЂ” Г¬ГЁГ­ГЁГ¬ГіГ¬ GC
     public void QueueProc(Zombie_Properies target, EffectData effects, ProcContext ctx) 
     {
         if (effects == null || target == null) return;
-        // простая защита от переполнения
+        // ГЇГ°Г®Г±ГІГ Гї Г§Г Г№ГЁГІГ  Г®ГІ ГЇГҐГ°ГҐГЇГ®Г«Г­ГҐГ­ГЁГї
         if (queue.Count > 20000) return;
 
         queue.Add(new ProcEvent {target = target, effects = effects, ctx = ctx });
