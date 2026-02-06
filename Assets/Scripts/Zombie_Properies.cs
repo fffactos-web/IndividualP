@@ -83,7 +83,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         // óðîí â êàæäîì òèêå
         float dmgPerTick = dps * tickInterval;
 
-        while (remaining > 0f)
+        if (source != null && source.activeEffects != null && source.activeEffects.Count > 0)
         {
             // íàíîñÿ óðîí, èñïîëüçóåì âíóòðåííèé âûçîâ, ÷òîáû íå ñòàâèòü íîâûå proc'û è íå ââîäèòü ðåêóðñèþ
             InternalApplyDamage(dmgPerTick);

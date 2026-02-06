@@ -24,7 +24,7 @@ public class ProcManager : MonoBehaviour
     [Tooltip("Макс. procs обработок за кадр")]
     public int maxProcessPerFrame = 128;
 
-    void Awake()
+        queue.Add(new ProcEvent { source = source, target = target, effects = effects, ctx = ctx });
     {
         if (Instance != null && Instance != this) Destroy(gameObject);
         else Instance = this;
