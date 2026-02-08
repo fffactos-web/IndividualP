@@ -2,9 +2,8 @@ using UnityEngine;
 
 public class Movement : MonoBehaviour
 {
-
     public float walkSpeed = 5f;
-    public float runBoost = 2;
+    public float runBoost = 2f;
     public float jumpForce = 100f;
     public float currentStamina;
     public float staminaRegenTimer;
@@ -21,6 +20,11 @@ public class Movement : MonoBehaviour
     Animator animator;
     GameObject character;
     GameObject characterHolder;
+    Character_Properties characterStats;
+
+    float baseWalkSpeed;
+    int jumpsUsed;
+    float dashCooldownTimer;
 
     [Header("Stamina")]
     public float maxStamina = 100f;
@@ -32,85 +36,49 @@ public class Movement : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-
         camera = Camera.main.GetComponent<Camera>();
-
         character = GameObject.FindWithTag("Character");
-
+        characterStats = GetComponent<Character_Properties>();
         characterHolder = GameObject.FindWithTag("Controller");
-
         animator = character.GetComponent<Animator>();
 
         UnityEngine.Cursor.lockState = CursorLockMode.Locked;
 
         staminaBar.maxValue = maxStamina;
+        currentStamina = maxStamina;
+        baseWalkSpeed = walkSpeed;
     }
 
     void Update()
     {
+        dashCooldownTimer -= Time.deltaTime;
+
         float moveHorizontal = Input.GetAxis("Horizontal");
         float moveVertical = Input.GetAxis("Vertical");
 
         Vector3 camForward = camera.transform.forward;
         Vector3 camRight = camera.transform.right;
-
         camForward.y = 0f;
         camRight.y = 0f;
-
         camForward.Normalize();
         camRight.Normalize();
 
-        Vector3 movement = (camForward * moveVertical + camRight * moveHorizontal).normalized * walkSpeed;
-        Vector3 moveDir = new Vector3(movement.x, 0f, movement.z);
+        isRunning = Input.GetKey(KeyCode.LeftShift) && currentStamina > 0f;
+        HandleStamina();
+
+        var stats = characterStats != null ? characterStats.GetStats() : null;
+        float moveMultiplier = stats != null ? stats.moveSpeed : 1f;
+        float acceleration = stats != null ? stats.globalAcceleration : 1f;
+        float targetSpeed = baseWalkSpeed * moveMultiplier * (isRunning ? runBoost : 1f);
+
+        Vector3 desiredVelocity = (camForward * moveVertical + camRight * moveHorizontal).normalized * targetSpeed;
+        Vector3 moveDir = new Vector3(desiredVelocity.x, 0f, desiredVelocity.z);
 
         animator.SetBool("Run", isRunning);
 
-        HandleStamina();
 
-        if (Input.GetKeyDown(KeyCode.L))
-            UnityEngine.Cursor.lockState = CursorLockMode.Locked;
-        if (Input.GetKeyDown(KeyCode.U))
-            UnityEngine.Cursor.lockState = CursorLockMode.None;
-
-        if (Input.GetKeyDown(KeyCode.LeftShift) && currentStamina > 0)
-        {
-            walkSpeed *= runBoost;
-            if (animator.gameObject.active)
-            {
-                animatorSpeed = animator.GetFloat("Speed") * runBoost;
-                animator.SetBool("Run", true);
-                animator.SetFloat("Speed", animatorSpeed);
-            }
-            else
-                animatorSpeed *= runBoost;
-            isRunning = true;
-        }
-        else if ((Input.GetKeyUp(KeyCode.LeftShift)) && isRunning)
-        {
-            walkSpeed /= runBoost;
-            if (animator.gameObject.active)
-            {
-                animatorSpeed = animator.GetFloat("Speed") / runBoost;
-                animator.SetBool("Run", true);
-                animator.SetFloat("Speed", animatorSpeed);
-            }
-            else
-                animatorSpeed /= runBoost;
-            isRunning = false;
-        }
-        if((currentStamina <= 0 && isRunning))
-        {
-            walkSpeed /= runBoost;
-            if (animator.gameObject.active)
-            {
-                animatorSpeed = animator.GetFloat("Speed") / runBoost;
-                animator.SetBool("Run", true);
-                animator.SetFloat("Speed", animatorSpeed);
-            }
-            else
-                animatorSpeed /= runBoost;
-            isRunning = false;
-        }
+        if (Input.GetKeyDown(KeyCode.LeftControl) && dashCooldownTimer <= 0f)
+            Dash(camForward, camRight, moveHorizontal, moveVertical, stats);
 
         if (Input.GetMouseButtonDown(0))
         {
@@ -134,10 +102,7 @@ public class Movement : MonoBehaviour
             Quaternion targetRot = Quaternion.LookRotation(camForward, Vector3.up);
             targetRot *= Quaternion.Euler(-90f, 0f, 0f);
             targetRot *= Quaternion.AngleAxis(-25f, Vector3.forward);
-            characterHolder.transform.rotation = Quaternion.Slerp(
-                characterHolder.transform.rotation,
-                targetRot,
-                10 * Time.deltaTime);
+            characterHolder.transform.rotation = Quaternion.Slerp(characterHolder.transform.rotation, targetRot, 10 * Time.deltaTime);
         }
 
         Ray rRay = new Ray(feetPos.position, -transform.up);
@@ -146,28 +111,26 @@ public class Movement : MonoBehaviour
         {
             onTop = false;
             inAir = false;
+            jumpsUsed = 0;
         }
 
         if (inAir && rb.velocity.y > 0.3f)
             onTop = true;
 
-        if (!inAir)
-            rb.velocity = new Vector3(movement.x, rb.velocity.y, movement.z);
+        Vector3 velocity = rb.velocity;
+        float airControl = stats != null ? stats.airControl : 0.35f;
+        float control = inAir ? airControl : 1f;
+
+        Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
+        horizontal = Vector3.Lerp(horizontal, moveDir, Time.deltaTime * 10f * acceleration * control);
+        rb.velocity = new Vector3(horizontal.x, velocity.y, horizontal.z);
 
         if (animator.gameObject.active)
         {
-            if (moveHorizontal != 0 || moveVertical != 0)
-                animator.SetBool("Walk", true);
-            else
-                animator.SetBool("Walk", false);
-
+            animator.SetBool("Walk", moveHorizontal != 0 || moveVertical != 0);
             animator.SetFloat("Vertical", moveVertical);
             animator.SetFloat("Horizontal", moveHorizontal);
-
-            if (Mathf.Abs(rb.velocity.y) > 0.05f && !Physics.Raycast(rRay, 0.4f))
-                animator.SetBool("Jump", true);
-            else
-                animator.SetBool("Jump", false);
+            animator.SetBool("Jump", Mathf.Abs(rb.velocity.y) > 0.05f && !Physics.Raycast(rRay, 0.4f));
         }
 
         if (Input.GetKeyDown(KeyCode.Space))
@@ -176,20 +139,31 @@ public class Movement : MonoBehaviour
 
     void Jump()
     {
-        RaycastHit hit;
-        Ray ray = new Ray(feetPos.position, -transform.up);
+        int maxJumps = characterStats != null ? characterStats.GetStats().jumpCount : 1;
+        if (jumpsUsed >= maxJumps)
+            return;
 
-        Physics.Raycast(ray, out hit, 0.13f);
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        rb.AddForce(0f, jumpForce, 0f);
+        inAir = true;
+        jumpsUsed++;
+    }
 
-        if (hit.collider != null)
-        {
-            if (hit.collider.transform.CompareTag("Terrain"))
-            {
-                rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-                rb.AddForce(0f, jumpForce, 0f);
-                inAir = true;
-            }
-        }
+
+    void Dash(Vector3 camForward, Vector3 camRight, float horizontal, float vertical, Character_Properties.HeroStats stats)
+    {
+        Vector3 dir = (camForward * vertical + camRight * horizontal);
+        if (dir.sqrMagnitude < 0.0001f)
+            dir = transform.forward;
+
+        dir.Normalize();
+
+        float dashMultiplier = stats != null ? stats.dashSpeed : 1f;
+        float accel = stats != null ? stats.globalAcceleration : 1f;
+        float dashSpeed = baseWalkSpeed * runBoost * dashMultiplier * accel;
+
+        rb.velocity = new Vector3(dir.x * dashSpeed, rb.velocity.y, dir.z * dashSpeed);
+        dashCooldownTimer = 0.8f;
     }
 
     void HandleStamina()
@@ -202,13 +176,11 @@ public class Movement : MonoBehaviour
         else if (currentStamina < maxStamina)
         {
             staminaRegenTimer += Time.deltaTime;
-
             if (staminaRegenTimer >= staminaRegenDelay)
-            {
                 currentStamina += staminaRegenPerSecond * Time.deltaTime;
-            }
         }
 
+        currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
         staminaBar.value = currentStamina;
     }
 }

@@ -8,11 +8,24 @@ public class Gun : MonoBehaviour
     public float fireRate = 2f;
     public float dmg = 4f;
 
-    [Header("Multipliers")]
-    public float dmgMultiplier = 1f;
+    [Header("Combat stats")]
     public float attackSpeedMultiplier = 1f;
+    public float critChance = 0.1f;
     public float critDmgMultiplier = 2f;
+    public float armorPenetration;
+    public float globalDamageMultiplier = 1f;
+    public float statusChance;
+    public float statusDuration = 1f;
+    public float procChance;
+    public float procPower = 1f;
+    public int procCount = 1;
+
+    [Header("Ability stats")]
     public float radius = 5f;
+    public float skillRangeMultiplier = 1f;
+    public float abilityHitboxSize = 1f;
+    public float cooldownReduction;
+    public float castSpeedMultiplier = 1f;
 
     [Header("Effects")]
     public bool isPiercing;
@@ -30,10 +43,11 @@ public class Gun : MonoBehaviour
     [SerializeField] LayerMask hitMask = ~0;
 
     RectTransform crosshair;
+    Character_Properties owner;
     Slider visualCooldown;
     Tween cooldownTween;
 
-    float CooldownDuration => fireRate / attackSpeedMultiplier;
+    float CooldownDuration => (fireRate / Mathf.Max(0.05f, attackSpeedMultiplier)) * (1f - Mathf.Clamp(cooldownReduction, 0f, 0.8f)) / Mathf.Max(0.1f, castSpeedMultiplier);
 
     public enum Modifiers
     {
@@ -53,6 +67,8 @@ public class Gun : MonoBehaviour
 
         visualCooldown.minValue = 0f;
         visualCooldown.maxValue = 1f;
+
+        owner = GetComponentInParent<Character_Properties>();
 
         LayerMask uiMask = LayerMask.GetMask("UI");
         if (uiMask != 0)
@@ -74,8 +90,6 @@ public class Gun : MonoBehaviour
                 case Modifiers.explosing:
                     LaunchRocket();
                     break;
-                default:
-                    break;
             }
         }
     }
@@ -93,20 +107,17 @@ public class Gun : MonoBehaviour
             .Spawn(firePoint.position, firePoint.rotation);
 
         Ray camRay = Camera.main.ScreenPointToRay(crosshair.position);
-        if (Physics.Raycast(camRay, out RaycastHit hit, 10000f, hitMask, QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(camRay, out RaycastHit hit, 10000f * skillRangeMultiplier, hitMask, QueryTriggerInteraction.Ignore))
         {
             Zombie_Head head = hit.collider.GetComponent<Zombie_Head>();
             Zombie_Properies zombie = hit.collider.GetComponent<Zombie_Properies>();
             if (head != null)
-            {
-                head.zombieProperies.GetDamage(dmg * dmgMultiplier);
-            }
+                DealDamage(head.zombieProperies, BuildHitData(true));
             else if (zombie != null)
-            {
-                zombie.GetDamage(dmg * dmgMultiplier);
-            }
+                DealDamage(zombie, BuildHitData(false));
         }
     }
+
     void PierceShot()
     {
         StartCooldown();
@@ -114,32 +125,32 @@ public class Gun : MonoBehaviour
         PoolManager.I.shotEffectPool
             .Spawn(firePoint.position, firePoint.rotation);
 
-        Vector2 screenPoint =
-            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
+        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
         Ray ray = Camera.main.ScreenPointToRay(screenPoint);
 
-        RaycastHit[] hits = Physics.RaycastAll(ray, 10000f, hitMask, QueryTriggerInteraction.Ignore);
-
-        Vector3 endPoint =
-            firePoint.position + ray.direction * 60f; // åñëè ïóñòî
+        RaycastHit[] hits = Physics.RaycastAll(ray, 10000f * skillRangeMultiplier, hitMask, QueryTriggerInteraction.Ignore);
+        Vector3 endPoint = firePoint.position + ray.direction * 60f;
 
         if (hits.Length > 0)
         {
             System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
-            float currentDamage = dmg * dmgMultiplier;
-
+            float currentDamage = dmg;
             foreach (var hit in hits)
             {
                 Zombie_Head head = hit.collider.GetComponentInParent<Zombie_Head>();
                 Zombie_Properies zombie = hit.collider.GetComponentInParent<Zombie_Properies>();
                 if (head != null)
                 {
-                    DealDamage(head.zombieProperies, currentDamage * critDmgMultiplier);
+                    var hd = BuildHitData(true);
+                    hd.rawDamage = currentDamage;
+                    DealDamage(head.zombieProperies, hd);
                 }
                 else if (zombie != null)
                 {
-                    DealDamage(zombie, currentDamage);
+                    var hd = BuildHitData(false);
+                    hd.rawDamage = currentDamage;
+                    DealDamage(zombie, hd);
                 }
                 else
                 {
@@ -161,21 +172,53 @@ public class Gun : MonoBehaviour
     {
         StartCooldown();
         Rocket rocket = PoolManager.I.rocketsPool.Spawn(firePoint.position, firePoint.rotation).GetComponent<Rocket>();
-        rocket.dmg = dmg;
-        rocket.radius = radius;
+        rocket.dmg = dmg * globalDamageMultiplier;
+        rocket.radius = radius * abilityHitboxSize;
     }
 
-    void DealDamage(Zombie_Properies zombie, float damage)
+    Zombie_Properies.HitData BuildHitData(bool isHeadshot)
     {
-        float dmgToDeal = Mathf.Min(damage, zombie.currentHealth);
-        zombie.GetDamage(dmgToDeal);
+        float missingHealthBonus = 1f;
+        if (owner != null)
+        {
+            var ownerStats = owner.GetStats();
+            float hpRatio = owner.GetCurrentHealthRatio();
+            missingHealthBonus += ownerStats.missingHealthDamage * (1f - hpRatio);
+            if (hpRatio <= 0.35f)
+                missingHealthBonus += ownerStats.lowHealthPower;
+        }
+
+        bool isCrit = Random.value <= critChance;
+        float critMultiplier = isCrit ? critDmgMultiplier : 1f;
+        if (isHeadshot)
+            critMultiplier *= critDmgMultiplier;
+
+        return new Zombie_Properies.HitData
+        {
+            rawDamage = dmg * globalDamageMultiplier * missingHealthBonus,
+            armorPenetration = armorPenetration,
+            critMultiplier = critMultiplier,
+            statusChance = statusChance,
+            statusDuration = statusDuration,
+            procChance = procChance,
+            procPower = procPower,
+            procCount = procCount
+        };
+    }
+
+    void DealDamage(Zombie_Properies zombie, Zombie_Properies.HitData hitData)
+    {
+        float dealt = zombie.TakeHit(hitData);
+        if (owner != null)
+        {
+            float heal = dealt * Mathf.Max(0f, owner.GetStats().lifesteal);
+            owner.Heal(heal);
+        }
     }
 
     void DrawPierceLine(Vector3 start, Vector3 end)
     {
-        GameObject pierceShot =
-            PoolManager.I.pierceShotPool.Spawn(start, firePoint.rotation);
-
+        GameObject pierceShot = PoolManager.I.pierceShotPool.Spawn(start, firePoint.rotation);
         LineRenderer line = pierceShot.GetComponent<LineRenderer>();
 
         line.positionCount = 2;
@@ -183,13 +226,10 @@ public class Gun : MonoBehaviour
         line.SetPosition(0, start);
         line.SetPosition(1, end);
 
-        // === FADE ===
         Color startColor = line.startColor;
         Color endColor = line.endColor;
-
         startColor.a = 1f;
         endColor.a = 1f;
-
         line.startColor = startColor;
         line.endColor = endColor;
 
@@ -200,15 +240,8 @@ public class Gun : MonoBehaviour
             line.startColor = startColor;
             line.endColor = endColor;
         })
-        .OnComplete(() =>
-        {
-            PoolManager.I.pierceShotPool.Despawn(pierceShot);
-        });
+        .OnComplete(() => { PoolManager.I.pierceShotPool.Despawn(pierceShot); });
     }
-
-
-
-
 
     void StartCooldown()
     {
