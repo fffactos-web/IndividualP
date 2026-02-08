@@ -92,26 +92,18 @@ public class Gun : MonoBehaviour
         PoolManager.I.shotEffectPool
             .Spawn(firePoint.position, firePoint.rotation);
 
-        Vector2 screenPoint =
-            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
-        Ray camRay = Camera.main.ScreenPointToRay(screenPoint);
+        Ray camRay = Camera.main.ScreenPointToRay(crosshair.position);
         if (Physics.Raycast(camRay, out RaycastHit hit, 10000f, hitMask, QueryTriggerInteraction.Ignore))
         {
-            Zombie_Head head = hit.collider.GetComponentInParent<Zombie_Head>();
-            Zombie_Properies zombie = hit.collider.GetComponentInParent<Zombie_Properies>();
+            Zombie_Head head = hit.collider.GetComponent<Zombie_Head>();
+            Zombie_Properies zombie = hit.collider.GetComponent<Zombie_Properies>();
             if (head != null)
             {
-                if (head.zombieProperies.currentHealth - dmg * dmgMultiplier * critDmgMultiplier > 0)
-                    head.zombieProperies.GetDamage(dmg * dmgMultiplier * critDmgMultiplier);
-                else
-                    head.zombieProperies.GetDamage(head.zombieProperies.currentHealth);
+                head.zombieProperies.GetDamage(dmg * dmgMultiplier);
             }
             else if (zombie != null)
             {
-                if (zombie.currentHealth - dmg * dmgMultiplier > 0)
-                    zombie.GetDamage(dmg * dmgMultiplier);
-                else
-                    zombie.GetDamage(zombie.currentHealth);
+                zombie.GetDamage(dmg * dmgMultiplier);
             }
         }
     }

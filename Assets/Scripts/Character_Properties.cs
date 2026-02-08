@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
 
-public class Character_Properties : MonoBehaviour, IGemCollector
+public class Character_Properties : MonoBehaviour
 {
     [SerializeField]
     GameObject[] dieEffect;
@@ -153,9 +153,7 @@ public class Character_Properties : MonoBehaviour, IGemCollector
     public void AddGems(int amount)
     {
         gems += amount; 
-        int gemPlus = Convert.ToInt32(UnityEngine.Random.Range(5, 20));
-        gems += gemPlus;
-        gemStatus.text = (gems + gemPlus).ToString();
+        gemStatus.text = (gems + amount).ToString();
     }
 
     public void GetDamage(float damage)

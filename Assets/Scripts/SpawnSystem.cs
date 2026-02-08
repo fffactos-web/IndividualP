@@ -66,6 +66,8 @@ public class SpawnSystem : MonoBehaviour
 
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.X))
+            SpawnWave();
         UpdateWaveTimer();
         UpdateDifficultyTimer();
     }

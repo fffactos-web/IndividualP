@@ -2,17 +2,16 @@ using UnityEngine;
 
 public class GemPickupZone : MonoBehaviour
 {
-    private IGemCollector collector;
 
+    Character_Properties cc;
     private void Awake()
     {
-        collector = GetComponentInParent<IGemCollector>();
+        cc = GetComponentInParent<Character_Properties>();
     }
-
     private void OnTriggerEnter(Collider other)
     {
         if (!other.TryGetComponent(out Gem gem)) return;
 
-        gem.FlyTo(transform, collector);
+        gem.FlyTo(transform, cc);
     }
 }

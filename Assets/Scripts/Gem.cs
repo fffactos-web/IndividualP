@@ -4,18 +4,18 @@ using DG.Tweening;
 public class Gem : MonoBehaviour, IPoolable
 {
     [SerializeField] private int value = 1;
-    [SerializeField] private float flyTime = 0.25f;
+    [SerializeField] private float flyTime = 2f;
 
     private Transform target;
-    private IGemCollector collector;
+    public Character_Properties c;
     private Tweener moveTween;
     private bool isFlying;
+    private bool touched;
 
     public void OnSpawn()
     {
         isFlying = false;
         target = null;
-        collector = null;
         moveTween?.Kill();
     }
 
@@ -24,26 +24,33 @@ public class Gem : MonoBehaviour, IPoolable
         moveTween?.Kill();
     }
 
-    public void FlyTo(Transform target, IGemCollector collector)
+    public void OnCompleteFly()
+    {
+        if(gameObject.active)
+            moveTween = transform.DOMove(target.position, flyTime).SetEase(Ease.InQuad);
+    }
+
+    public void FlyTo(Transform target, Character_Properties cc)
     {
         if (isFlying) return;
 
+        touched = true;
+
         this.target = target;
-        this.collector = collector;
+        c = cc;
         isFlying = true;
 
-        moveTween = transform
-            .DOMove(target.position, flyTime)
-            .SetEase(Ease.InQuad);
+        moveTween = transform.DOMove(target.position, flyTime).SetEase(Ease.InQuad).OnComplete(OnCompleteFly);
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (!isFlying) return;
-
-        if (collector != null)
-            collector.AddGems(value);
-
-        PoolManager.I.gemPool.Despawn(gameObject);
+        if (other.CompareTag("Player"))
+        {
+            c.AddGems(1);
+            touched = false;
+            PoolManager.I.gemPool.Despawn(gameObject);
+        }
     }
 }
