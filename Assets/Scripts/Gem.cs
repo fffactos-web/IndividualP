@@ -26,7 +26,7 @@ public class Gem : MonoBehaviour, IPoolable
 
     public void OnCompleteFly()
     {
-        if(gameObject.active)
+        if(gameObject.activeInHierarchy)
             moveTween = transform.DOMove(target.position, flyTime).SetEase(Ease.InQuad);
     }
 
@@ -48,7 +48,7 @@ public class Gem : MonoBehaviour, IPoolable
         if (!isFlying) return;
         if (other.CompareTag("Player"))
         {
-            c.AddGems(1);
+            c.AddGems(value);
             touched = false;
             PoolManager.I.gemPool.Despawn(gameObject);
         }

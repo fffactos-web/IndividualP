@@ -3,9 +3,29 @@ using UnityEngine;
 
 public class Zombie_Properies : MonoBehaviour, IPoolable
 {
+    public struct HitData
+    {
+        public float rawDamage;
+        public float armorPenetration;
+        public float critMultiplier;
+        public float statusChance;
+        public float statusDuration;
+        public float procChance;
+        public float procPower;
+        public int procCount;
+    }
+
     [Header("Health")]
     public float maxHealth;
     public float currentHealth;
+
+    [Header("Defense")]
+    public float armor = 0f;
+    [Range(0f, 0.95f)] public float resistance = 0f;
+
+    [Header("Status")]
+    public bool hasStatus;
+    public float statusTimer;
 
     [Header("Damage popup")]
     [SerializeField] float stackResetTime = 0.5f;
@@ -34,7 +54,18 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         initialLocalPosition = transform.localPosition;
     }
 
-    // ===== POOL =====
+    void Update()
+    {
+        if (hasStatus)
+        {
+            statusTimer -= Time.deltaTime;
+            if (statusTimer <= 0f)
+            {
+                statusTimer = 0f;
+                hasStatus = false;
+            }
+        }
+    }
 
     public void OnSpawn()
     {
@@ -53,26 +84,52 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         ResetProperties();
     }
 
-    // ===== HEALTH =====
-
     void ResetProperties()
     {
         currentHealth = maxHealth;
+        hasStatus = false;
+        statusTimer = 0f;
         transform.localRotation = initialLocalRotation;
         transform.localPosition = initialLocalPosition;
     }
 
     public void GetDamage(float damage)
     {
-        currentHealth -= damage;
+        TakeHit(new HitData { rawDamage = damage, critMultiplier = 1f, procCount = 1, procPower = 1f });
+    }
 
-        ShowDamage(damage);
+    public float TakeHit(HitData hitData)
+    {
+        float effectiveArmor = Mathf.Max(0f, armor - hitData.armorPenetration);
+        float armorMultiplier = 100f / (100f + effectiveArmor);
+        float damageAfterMitigation = hitData.rawDamage * Mathf.Max(1f, hitData.critMultiplier) * armorMultiplier * (1f - resistance);
+
+        if (hasStatus && character != null)
+            damageAfterMitigation *= 1f + character.GetStats().damageVsStatusTargets;
+
+        if (hitData.procCount > 0 && hitData.procChance > 0f)
+        {
+            for (int i = 0; i < hitData.procCount; i++)
+            {
+                if (Random.value <= hitData.procChance)
+                    damageAfterMitigation += hitData.rawDamage * Mathf.Max(0f, hitData.procPower - 1f);
+            }
+        }
+
+        currentHealth -= damageAfterMitigation;
+        ShowDamage(damageAfterMitigation);
+
+        if (Random.value <= hitData.statusChance)
+        {
+            hasStatus = true;
+            statusTimer = Mathf.Max(statusTimer, hitData.statusDuration);
+        }
 
         if (currentHealth <= 0)
             Die();
-    }
 
-    // ===== DAMAGE STACK =====
+        return Mathf.Max(0f, damageAfterMitigation);
+    }
 
     void ShowDamage(float damage)
     {
@@ -84,11 +141,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
         if (damagePopup == null || Time.time - lastDamageTime > stackResetTime)
         {
-            var go = PoolManager.I.popupPool.Spawn(
-                transform.position,
-                Quaternion.identity
-            );
-
+            var go = PoolManager.I.popupPool.Spawn(transform.position, Quaternion.identity);
             if (go == null)
             {
                 Debug.LogError("Spawn returned NULL");
@@ -96,7 +149,6 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             }
 
             damagePopup = go.GetComponent<DamagePopup>();
-
             if (damagePopup == null)
             {
                 Debug.LogError("DamagePopup component NOT FOUND on prefab");
@@ -110,9 +162,6 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         lastDamageTime = Time.time;
     }
 
-
-    // ===== DEATH =====
-
     void Die()
     {
         if (damagePopup != null)
@@ -124,15 +173,10 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         SpawnGems();
 
         character.kills++;
-        killsStatus.text = (character.kills + 1).ToString();
+        killsStatus.text = character.kills.ToString();
         ResetProperties();
 
-        PoolManager.I.deathEffectPool.Spawn(
-            transform.position + Vector3.up * 0.8f,
-            Quaternion.identity
-        );
-
-        // Zombie_Properies lives on a child of the pooled prefab. We must return the pooled root object.
+        PoolManager.I.deathEffectPool.Spawn(transform.position + Vector3.up * 0.8f, Quaternion.identity);
         PoolManager.I.followerZombiePool.Despawn(transform.root.gameObject);
     }
 
@@ -146,15 +190,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             float radius = Random.Range(0f, coneRadius);
             float height = Random.Range(0.3f, coneHeight);
 
-            Vector3 offset = new Vector3(
-                Mathf.Cos(angle) * radius,
-                height,
-                Mathf.Sin(angle) * radius
-            );
-
-            PoolManager.I.gemPool.Spawn(transform.position + offset,Quaternion.identity);
+            Vector3 offset = new Vector3(Mathf.Cos(angle) * radius, height, Mathf.Sin(angle) * radius);
+            PoolManager.I.gemPool.Spawn(transform.position + offset, Quaternion.identity);
         }
     }
-
-
 }
