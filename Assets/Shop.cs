@@ -49,11 +49,11 @@ public class Shop : MonoBehaviour
 
         roll = Mathf.Clamp(roll, 0f, 1000f);
 
-        if (roll < 750f) return ItemRarity.Common;
+        if (roll < 600f) return ItemRarity.Common;
         if (roll < 800f) return ItemRarity.Uncommon;
         if (roll < 900f) return ItemRarity.Rare;
-        if (roll < 980f) return ItemRarity.Epic;
-        if (roll < 990f) return ItemRarity.Mythic;
+        if (roll < 950f) return ItemRarity.Epic;
+        if (roll < 975f) return ItemRarity.Mythic;
         return ItemRarity.Legendary;
     }
 

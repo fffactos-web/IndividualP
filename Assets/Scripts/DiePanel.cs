@@ -16,6 +16,8 @@ public class DiePanel : MonoBehaviour
 
     public void Restart()
     {
+        Time.timeScale = 1f;
+        UnityEngine.Cursor.lockState = CursorLockMode.None;
         SceneManager.LoadScene(1);
     }
 

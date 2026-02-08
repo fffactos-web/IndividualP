@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 770dd2e6f1fe4ed3ac656e9f8cc4f799, type: 3}
+  m_Name: Item_Moko
+  m_EditorClassIdentifier: 
+  itemName: "\u041C\u043E\u043A\u0430\u0447\u0438\u043D\u043E"
+  description: "\u042D\u0442\u043E \u043F\u0440\u043E\u0441\u0442\u043E \u041C\u043E\u043A\u043E,
+    \u043D\u0438\u0447\u0435\u0433\u043E \u043E\u0441\u043E\u0431\u0435\u043D\u043D\u043E\u0433\u043E\n\u0423\u0432\u0435\u043B\u0438\u0447\u0438\u0432\u0430\u0435\u0442
+    \u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0430\u0442\u0430\u043A\u0438"
+  icon: {fileID: 21300000, guid: a558ef21c7d4ed248ba30b00e8537857, type: 3}
+  rarity: 2
+  cost: 0
+  statModifiers:
+  - stat: 1
+    value: 3

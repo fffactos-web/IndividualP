@@ -1,7 +1,7 @@
 
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "BJacket", menuName = "Game/Hero Item/BJacket", order = 10)]
+[CreateAssetMenu(fileName = "BJacket", menuName = "Game/BJacket", order = 10)]
 public class BJacket : HeroItemDefinition
 {
     Character_StatusBar c;

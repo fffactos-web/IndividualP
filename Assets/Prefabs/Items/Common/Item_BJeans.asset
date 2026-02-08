@@ -22,4 +22,4 @@ MonoBehaviour:
   cost: 15
   statModifiers:
   - stat: 16
-    value: 5
+    value: 1

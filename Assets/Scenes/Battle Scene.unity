@@ -5392,7 +5392,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4864012469112387789, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
       propertyPath: items.Array.size
-      value: 2
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 4864012469112387789, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
       propertyPath: items.Array.data[0]
@@ -5402,6 +5402,22 @@ PrefabInstance:
       propertyPath: items.Array.data[1]
       value: 
       objectReference: {fileID: 11400000, guid: 794f6e4daaeee54409c95cdba0ac2ecf, type: 2}
+    - target: {fileID: 4864012469112387789, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: items.Array.data[2]
+      value: 
+      objectReference: {fileID: 11400000, guid: a5b79fe9a75f7c54ebe876c0e1bb9df7, type: 2}
+    - target: {fileID: 4864012469112387789, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: items.Array.data[3]
+      value: 
+      objectReference: {fileID: 11400000, guid: b45f44be4f56fa44f860fc5092483fb8, type: 2}
+    - target: {fileID: 4864012469112387789, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: items.Array.data[4]
+      value: 
+      objectReference: {fileID: 11400000, guid: 5e2ba943e3d5fca4ab565bd2222e0469, type: 2}
+    - target: {fileID: 4864012469112387789, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: items.Array.data[5]
+      value: 
+      objectReference: {fileID: 11400000, guid: e5f391eb3033612419bd76deb415c36a, type: 2}
     - target: {fileID: 4864012469112387789, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
       propertyPath: shopItems.Array.size
       value: 3
@@ -5418,6 +5434,26 @@ PrefabInstance:
       propertyPath: shopItems.Array.data[2]
       value: 
       objectReference: {fileID: 133373463}
+    - target: {fileID: 5494543548061012207, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: m_Type
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5494543548061012207, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 84088cb9d04a88644b127b033e0f7734, type: 3}
+    - target: {fileID: 5494543548061012207, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: m_Color.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5494543548061012207, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: m_Color.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5494543548061012207, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
+      propertyPath: m_Color.r
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7016825824099993936, guid: 5cff5332165ee994bb3978aec68054b4, type: 3}
       propertyPath: m_Name
       value: Shop
@@ -9328,11 +9364,11 @@ PrefabInstance:
       objectReference: {fileID: 666814327}
     - target: {fileID: 4478591736725610257, guid: 9ce482048a2358a469987ba13889dd19, type: 3}
       propertyPath: waveInterval
-      value: 60
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 4478591736725610257, guid: 9ce482048a2358a469987ba13889dd19, type: 3}
       propertyPath: difficultyInterval
-      value: 120
+      value: 45
       objectReference: {fileID: 0}
     - target: {fileID: 4478591736725610257, guid: 9ce482048a2358a469987ba13889dd19, type: 3}
       propertyPath: zombieTypes.Array.data[0].pool
@@ -9480,7 +9516,7 @@ PrefabInstance:
       objectReference: {fileID: 1531637716}
     - target: {fileID: 9020054377416940776, guid: 9ce482048a2358a469987ba13889dd19, type: 3}
       propertyPath: experienceGrowthMultiplier
-      value: 2
+      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 9020054377416940776, guid: 9ce482048a2358a469987ba13889dd19, type: 3}
       propertyPath: baseStats.globalAcceleration
