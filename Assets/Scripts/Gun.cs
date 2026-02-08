@@ -47,7 +47,8 @@ public class Gun : MonoBehaviour
     Slider visualCooldown;
     Tween cooldownTween;
 
-    float CooldownDuration => (fireRate / Mathf.Max(0.05f, attackSpeedMultiplier)) * (1f - Mathf.Clamp(cooldownReduction, 0f, 0.8f)) / Mathf.Max(0.1f, castSpeedMultiplier);
+    float CooldownDuration => (1f / Mathf.Max(0.05f, fireRate)) / Mathf.Max(0.05f, attackSpeedMultiplier) * (1f - Mathf.Clamp(cooldownReduction, 0f, 0.8f)) / Mathf.Max(0.1f, castSpeedMultiplier);
+
 
     public enum Modifiers
     {

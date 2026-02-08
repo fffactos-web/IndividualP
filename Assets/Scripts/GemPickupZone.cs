@@ -10,8 +10,9 @@ public class GemPickupZone : MonoBehaviour
     }
     private void OnTriggerEnter(Collider other)
     {
-        if (!other.TryGetComponent(out Gem gem)) return;
-
-        gem.FlyTo(transform, cc);
+        if (other.TryGetComponent(out Gem gem))
+            gem.FlyTo(transform, cc);
+        if (other.TryGetComponent(out Expirience exp))
+            exp.FlyTo(transform, cc);
     }
 }

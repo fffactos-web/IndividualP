@@ -74,6 +74,7 @@ public class Character_Properties : MonoBehaviour
     [SerializeField] DiePanel diePanel;
     [SerializeField] UnityEngine.UI.Slider[] healthBars;
     [SerializeField] UnityEngine.UI.Slider[] healthBarForeground;
+    [SerializeField] UnityEngine.UI.Slider expirienceBar;
     [SerializeField] Transform gunHolder;
     [SerializeField] Transform camGunHolder;
 
@@ -83,7 +84,7 @@ public class Character_Properties : MonoBehaviour
 
     [Header("Progression")]
     [SerializeField] int startExperienceForNextLevel = 20;
-    [SerializeField] float experienceGrowthMultiplier = 1.25f;
+    [SerializeField] float experienceGrowthMultiplier = 2f;
 
     float currentHealth;
     float currentShield;
@@ -99,6 +100,7 @@ public class Character_Properties : MonoBehaviour
     public float gems;
 
     public int level { get; private set; } = 1;
+    [SerializeField]
     public int currentExperience { get; private set; }
     public int experienceForNextLevel { get; private set; }
 
@@ -161,6 +163,8 @@ public class Character_Properties : MonoBehaviour
         diePanel.gameObject.SetActive(false);
         gemStatus = GameObject.FindGameObjectWithTag("Gem Status").GetComponent<TextMeshProUGUI>();
         experienceForNextLevel = Mathf.Max(1, startExperienceForNextLevel);
+        expirienceBar.maxValue = experienceForNextLevel;
+        expirienceBar.value = currentExperience;
 
         UpdateHealthBars();
         UpdateGemStatus();
@@ -348,13 +352,12 @@ public class Character_Properties : MonoBehaviour
             currentExperience -= experienceForNextLevel;
             level++;
 
-            experienceForNextLevel = Mathf.Max(
-                experienceForNextLevel + 1,
-                Mathf.RoundToInt(experienceForNextLevel * experienceGrowthMultiplier)
-            );
+            experienceForNextLevel = Mathf.Max(experienceForNextLevel + 1, Mathf.RoundToInt(experienceForNextLevel * experienceGrowthMultiplier));
 
             OnLevelUp?.Invoke();
         }
+        expirienceBar.maxValue = experienceForNextLevel;
+        expirienceBar.DOValue(currentExperience, 1f);
     }
 
     void UpdateGemStatus()
