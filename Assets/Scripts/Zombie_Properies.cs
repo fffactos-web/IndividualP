@@ -196,24 +196,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             PoolManager.I.gemPool.Spawn(transform.position + offset, Quaternion.identity);
         }
     }
-            float radius = Random.Range(coneRadius, coneRadius * 2);
-            Vector3 groundOffset = new Vector3(
-                Mathf.Cos(angle) * radius,
-                0f,
-                Mathf.Sin(angle) * radius
-            );
 
-            Vector3 startPos = transform.position + Vector3.up * 0.6f;
-            Vector3 endPos = transform.position + groundOffset;
-
-            GameObject gem = PoolManager.I.gemPool.Spawn(startPos, Quaternion.identity);
-
-            float jumpPower = Random.Range(coneHeight, coneHeight * 2);
-            float duration = Random.Range(.5f, 1f);
-
-            gem.transform.DOJump(endPos, jumpPower, 1, duration).SetEase(Ease.OutQuad);
-        }
-    }
     void SpawnExpirience()
     {
         int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
