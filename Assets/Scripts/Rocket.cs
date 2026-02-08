@@ -17,6 +17,13 @@ public class Rocket : MonoBehaviour, IPoolable
 
     bool canExplode;
 
+    Character_Properties owner;
+
+    public void SetOwner(Character_Properties character)
+    {
+        owner = character;
+    }
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
