@@ -84,6 +84,7 @@ public class Zombie_Follower : MonoBehaviour
                 hp = player.GetComponentInChildren<Character_Properties>();
             if (hp != null)
                 hp.GetDamage(damage);
+            Character_StatusBar.I.OnGetDamage?.Invoke(damage, GetComponent<Zombie_Properies>());
         }
     }
 

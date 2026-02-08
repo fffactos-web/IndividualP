@@ -18,6 +18,8 @@ TagManager:
   - Difficulty Bar
   - Gem Status
   - Kills Status
+  - Item Panel
+  - Shop
   layers:
   - Default
   - TransparentFX

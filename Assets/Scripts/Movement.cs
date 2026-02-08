@@ -2,27 +2,26 @@ using UnityEngine;
 
 public class Movement : MonoBehaviour
 {
-    public float walkSpeed = 5f;
-    public float runBoost = 2f;
-    public float jumpForce = 100f;
-    public float currentStamina;
-    public float staminaRegenTimer;
+    private float currentStamina;
+    private float staminaRegenTimer;
+    private float runBoost;
+    private float jumpForce = 75f;
     public bool inAir;
     public bool isRunning;
     public bool isFiring;
     public bool onTop;
-    public Camera camera;
-    public Rigidbody rb;
-    public Transform feetPos;
+    private Camera camera;
+    private Rigidbody rb;
+    [SerializeField] Transform feetPos;
 
     public float animatorSpeed;
 
     Animator animator;
     GameObject character;
     GameObject characterHolder;
-    Character_Properties characterStats;
+    [SerializeField] Character_Properties characterStats;
 
-    float baseWalkSpeed;
+    [SerializeField]float baseWalkSpeed;
     int jumpsUsed;
     float dashCooldownTimer;
 
@@ -38,7 +37,6 @@ public class Movement : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         camera = Camera.main.GetComponent<Camera>();
         character = GameObject.FindWithTag("Character");
-        characterStats = GetComponent<Character_Properties>();
         characterHolder = GameObject.FindWithTag("Controller");
         animator = character.GetComponent<Animator>();
 
@@ -46,7 +44,12 @@ public class Movement : MonoBehaviour
 
         staminaBar.maxValue = maxStamina;
         currentStamina = maxStamina;
-        baseWalkSpeed = walkSpeed;
+    }
+
+    public void ResetProperties()
+    {
+        Character_Properties.HeroStats heroStats = characterStats.GetStats();
+        runBoost = heroStats.runSpeed;
     }
 
     void Update()
@@ -67,7 +70,7 @@ public class Movement : MonoBehaviour
         HandleStamina();
 
         var stats = characterStats != null ? characterStats.GetStats() : null;
-        float moveMultiplier = stats != null ? stats.moveSpeed : 1f;
+        float moveMultiplier = stats != null ? stats.moveSpeed : 20f;
         float acceleration = stats != null ? stats.globalAcceleration : 1f;
         float targetSpeed = baseWalkSpeed * moveMultiplier * (isRunning ? runBoost : 1f);
 
@@ -158,7 +161,7 @@ public class Movement : MonoBehaviour
 
         dir.Normalize();
 
-        float dashMultiplier = stats != null ? stats.dashSpeed : 1f;
+        float dashMultiplier = stats != null ? stats.runSpeed : 1f;
         float accel = stats != null ? stats.globalAcceleration : 1f;
         float dashSpeed = baseWalkSpeed * runBoost * dashMultiplier * accel;
 

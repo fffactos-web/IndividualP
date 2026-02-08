@@ -31,7 +31,7 @@ public class Character_Properties : MonoBehaviour
 
         [Header("Movement")]
         public float moveSpeed = 1f;
-        public float dashSpeed = 1f;
+        public float runSpeed = 1f;
         public int jumpCount = 1;
         [Range(0f, 1f)] public float airControl = 0.35f;
         public float globalAcceleration = 1f;
@@ -59,6 +59,7 @@ public class Character_Properties : MonoBehaviour
         public float killStreakBonus = 0f;
         public float onHitTakenEffectPower = 0f;
         public float statExchange = 0f;
+        public float luck = 0f;
 
         [Header("AoE / ranges")]
         public float attackRadius = 1f;
@@ -78,6 +79,7 @@ public class Character_Properties : MonoBehaviour
     [SerializeField] UnityEngine.UI.Slider expirienceBar;
     [SerializeField] Transform gunHolder;
     [SerializeField] Transform camGunHolder;
+    [SerializeField] Shop shop;
 
     [Header("Stats")]
     [SerializeField] HeroStats baseStats = new HeroStats();
@@ -108,8 +110,9 @@ public class Character_Properties : MonoBehaviour
     public int experienceForNextLevel { get; private set; }
 
     public event Action OnLevelUp;
+    public event Action OnGetDamage;
 
-    static HeroStats CreateBonusStats()
+    public static HeroStats CreateBonusStats()
     {
         return new HeroStats
         {
@@ -127,7 +130,7 @@ public class Character_Properties : MonoBehaviour
             resistance = 0f,
             lifesteal = 0f,
             moveSpeed = 0f,
-            dashSpeed = 0f,
+            runSpeed = 0f,
             jumpCount = 0,
             airControl = 0f,
             globalAcceleration = 0f,
@@ -148,6 +151,7 @@ public class Character_Properties : MonoBehaviour
             missingHealthDamage = 0f,
             lowHealthPower = 0f,
             statExchange = 0f,
+            luck = 0f,
             attackRadius = 0f,
             skillRange = 0f,
             abilityHitboxSize = 0f,
@@ -171,6 +175,16 @@ public class Character_Properties : MonoBehaviour
 
         UpdateHealthBars();
         UpdateGemStatus();
+
+        OnLevelUp = () => LevelUp();
+    }
+
+    void LevelUp()
+    {
+        shop.gameObject.SetActive(true);
+        shop.RefreshItems();
+        Time.timeScale = 0f;
+        UnityEngine.Cursor.lockState = CursorLockMode.None;
     }
 
     private void Update()
@@ -211,7 +225,7 @@ public class Character_Properties : MonoBehaviour
             lifesteal = Mathf.Max(0f, baseStats.lifesteal + bonusStats.lifesteal),
 
             moveSpeed = Mathf.Max(0.1f, baseStats.moveSpeed + bonusStats.moveSpeed),
-            dashSpeed = Mathf.Max(0.1f, baseStats.dashSpeed + bonusStats.dashSpeed),
+            runSpeed = Mathf.Max(0.1f, baseStats.runSpeed + bonusStats.runSpeed),
             jumpCount = Mathf.Max(1, baseStats.jumpCount + bonusStats.jumpCount),
             airControl = Mathf.Clamp01(baseStats.airControl + bonusStats.airControl),
             globalAcceleration = Mathf.Max(0.1f, baseStats.globalAcceleration + bonusStats.globalAcceleration),
@@ -234,6 +248,7 @@ public class Character_Properties : MonoBehaviour
             killStreakBonus = baseStats.killStreakBonus + bonusStats.killStreakBonus,
             onHitTakenEffectPower = baseStats.onHitTakenEffectPower + bonusStats.onHitTakenEffectPower,
             statExchange = baseStats.statExchange + bonusStats.statExchange,
+            luck = baseStats.luck + bonusStats.luck,
 
             attackRadius = Mathf.Max(0.1f, baseStats.attackRadius + bonusStats.attackRadius),
             skillRange = Mathf.Max(0.1f, baseStats.skillRange + bonusStats.skillRange),
@@ -247,6 +262,7 @@ public class Character_Properties : MonoBehaviour
     public void ResetProperties()
     {
         HeroStats s = GetStats();
+        GetComponent<Movement>().ResetProperties();
         currentHealth = s.maxHealth;
         currentShield = s.maxShield;
         currentSkillResource = s.maxSkillResource;
@@ -256,7 +272,10 @@ public class Character_Properties : MonoBehaviour
     {
         HeroStats s = GetStats();
         if (currentHealth < s.maxHealth)
+        {
             currentHealth = Mathf.Min(s.maxHealth, currentHealth + s.healthRegen * Time.deltaTime);
+            UpdateHealthBars();
+        }
 
         if (currentShield < s.maxShield)
             currentShield = Mathf.Min(s.maxShield, currentShield + s.healthRegen * 0.5f * Time.deltaTime);
@@ -312,41 +331,11 @@ public class Character_Properties : MonoBehaviour
         ApplyStatsToGun(camGunHolder.GetComponentInChildren<Gun>());
     }
 
-    void ApplyStatsToGun(Gun gun)
-    {
-        if (gun == null)
-            return;
-
-        HeroStats s = GetStats();
-        gun.dmg = s.damage;
-        gun.attackSpeedMultiplier = s.attackSpeed;
-        gun.critChance = s.critChance;
-        gun.critDmgMultiplier = s.critDamageMultiplier;
-        gun.armorPenetration = s.armorPenetration;
-        gun.globalDamageMultiplier = s.globalDamageMultiplier;
-        gun.statusChance = s.statusChance;
-        gun.statusDuration = s.statusDuration;
-        gun.procChance = s.procChance;
-        gun.procPower = s.procPower;
-        gun.procCount = s.procCount;
-        gun.radius = 5f * s.attackRadius;
-        gun.skillRangeMultiplier = s.skillRange;
-        gun.abilityHitboxSize = s.abilityHitboxSize;
-        gun.cooldownReduction = s.cooldownReduction;
-        gun.castSpeedMultiplier = s.castSpeed;
-    }
-
-
     public bool ApplyItem(HeroItemDefinition item)
     {
+        item.OnEquip();
+
         if (item == null)
-            return false;
-
-        if (!item.Stackable && equippedItems.Contains(item))
-            return false;
-
-        int slotLimit = GetStats().itemSlotLimit;
-        if (equippedItems.Count >= slotLimit)
             return false;
 
         equippedItems.Add(item);
@@ -434,7 +423,7 @@ public class Character_Properties : MonoBehaviour
                 bonusStats.moveSpeed += modifier.value;
                 break;
             case HeroStatType.DashSpeed:
-                bonusStats.dashSpeed += modifier.value;
+                bonusStats.runSpeed += modifier.value;
                 break;
             case HeroStatType.JumpCount:
                 bonusStats.jumpCount += Mathf.RoundToInt(modifier.value);
@@ -493,6 +482,9 @@ public class Character_Properties : MonoBehaviour
             case HeroStatType.StatExchange:
                 bonusStats.statExchange += modifier.value;
                 break;
+            case HeroStatType.Luck:
+                bonusStats.luck += modifier.value;
+                break;
 
             case HeroStatType.AttackRadius:
                 bonusStats.attackRadius += modifier.value;
@@ -508,7 +500,8 @@ public class Character_Properties : MonoBehaviour
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
-
+        }
+    }
     void ApplyStatsToGun(Gun gun)
     {
         if (gun == null)
@@ -531,13 +524,6 @@ public class Character_Properties : MonoBehaviour
         gun.abilityHitboxSize = s.abilityHitboxSize;
         gun.cooldownReduction = s.cooldownReduction;
         gun.castSpeedMultiplier = s.castSpeed;
-    }
-
-    public void AddGems(int amount)
-    {
-        gems += amount;
-        UpdateGemStatus();
-        AddExperience(amount);
     }
 
     public void AddExperience(int amount)
@@ -567,39 +553,6 @@ public class Character_Properties : MonoBehaviour
         AddExperience(amount);
     }
 
-    public void AddExperience(int amount)
-    {
-        if (amount <= 0)
-            return;
-
-        currentExperience += amount;
-
-        while (currentExperience >= experienceForNextLevel)
-        {
-            currentExperience -= experienceForNextLevel;
-            level++;
-
-            experienceForNextLevel = Mathf.Max(
-                experienceForNextLevel + 1,
-                Mathf.RoundToInt(experienceForNextLevel * experienceGrowthMultiplier)
-            );
-
-            OnLevelUp?.Invoke();
-    void UpdateGemStatus()
-    {
-        if (gemStatus != null)
-            gemStatus.text = gems.ToString();
-    }
-
-    void UpdateHealthBars()
-    {
-        float maxHealth = GetStats().maxHealth;
-        foreach (var bar in healthBars)
-        {
-            bar.maxValue = maxHealth;
-            bar.value = currentHealth;
-        }
-
     void UpdateGemStatus()
     {
         if (gemStatus != null)
@@ -624,6 +577,7 @@ public class Character_Properties : MonoBehaviour
 
     public void GetDamage(float damage)
     {
+        OnGetDamage?.Invoke();
         HeroStats s = GetStats();
         float reducedByArmor = damage * (100f / (100f + Mathf.Max(0f, s.armor)));
         float reducedDamage = reducedByArmor * (1f - s.resistance);
@@ -656,5 +610,6 @@ public class Character_Properties : MonoBehaviour
         diePanel.showDiePanel();
         UnityEngine.Cursor.lockState = CursorLockMode.None;
         gameObject.SetActive(false);
+        Time.timeScale = 0f;
     }
 }
