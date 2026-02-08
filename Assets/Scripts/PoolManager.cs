@@ -12,6 +12,7 @@ public class PoolManager : MonoBehaviour
     public ObjectPool rocketsPool;
     public ObjectPool explosionPool;
     public ObjectPool gemPool;
+    public ObjectPool expiriencePool;
 
     void Awake()
     {

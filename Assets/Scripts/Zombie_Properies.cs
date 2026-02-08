@@ -1,3 +1,4 @@
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 
@@ -43,8 +44,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     [SerializeField] private int baseGemCount = 2;
     [SerializeField] private int gemCountPerDifficulty = 2;
 
-    [SerializeField] private float coneHeight = 1.2f;
-    [SerializeField] private float coneRadius = 1f;
+    [SerializeField] private float coneHeight = 2f;
+    [SerializeField] private float coneRadius = 2f;
 
     void Awake()
     {
@@ -171,6 +172,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         }
 
         SpawnGems();
+        SpawnExpirience();
 
         character.kills++;
         killsStatus.text = character.kills.ToString();
@@ -194,4 +196,48 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
             PoolManager.I.gemPool.Spawn(transform.position + offset, Quaternion.identity);
         }
     }
+            float radius = Random.Range(coneRadius, coneRadius * 2);
+            Vector3 groundOffset = new Vector3(
+                Mathf.Cos(angle) * radius,
+                0f,
+                Mathf.Sin(angle) * radius
+            );
+
+            Vector3 startPos = transform.position + Vector3.up * 0.6f;
+            Vector3 endPos = transform.position + groundOffset;
+
+            GameObject gem = PoolManager.I.gemPool.Spawn(startPos, Quaternion.identity);
+
+            float jumpPower = Random.Range(coneHeight, coneHeight * 2);
+            float duration = Random.Range(.5f, 1f);
+
+            gem.transform.DOJump(endPos, jumpPower, 1, duration).SetEase(Ease.OutQuad);
+        }
+    }
+    void SpawnExpirience()
+    {
+        int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
+
+        for (int i = 0; i < gemCount; i++)
+        {
+            float angle = Random.Range(0f, Mathf.PI * 2f);
+            float radius = Random.Range(coneRadius, coneRadius * 2);
+            Vector3 groundOffset = new Vector3(
+                Mathf.Cos(angle) * radius,
+                0f,
+                Mathf.Sin(angle) * radius
+            );
+
+            Vector3 startPos = transform.position + Vector3.up * 0.6f;
+            Vector3 endPos = transform.position + groundOffset;
+
+            GameObject gem = PoolManager.I.expiriencePool.Spawn(startPos, Quaternion.identity);
+
+            float jumpPower = Random.Range(coneHeight, coneHeight * 2);
+            float duration = Random.Range(.5f, 1f);
+
+            gem.transform.DOJump(endPos, jumpPower, 1, duration).SetEase(Ease.OutQuad);
+        }
+    }
+
 }

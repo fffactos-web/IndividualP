@@ -75,6 +75,7 @@ public class Character_Properties : MonoBehaviour
     [SerializeField] DiePanel diePanel;
     [SerializeField] UnityEngine.UI.Slider[] healthBars;
     [SerializeField] UnityEngine.UI.Slider[] healthBarForeground;
+    [SerializeField] UnityEngine.UI.Slider expirienceBar;
     [SerializeField] Transform gunHolder;
     [SerializeField] Transform camGunHolder;
 
@@ -165,6 +166,8 @@ public class Character_Properties : MonoBehaviour
         diePanel.gameObject.SetActive(false);
         gemStatus = GameObject.FindGameObjectWithTag("Gem Status").GetComponent<TextMeshProUGUI>();
         experienceForNextLevel = Mathf.Max(1, startExperienceForNextLevel);
+        expirienceBar.maxValue = experienceForNextLevel;
+        expirienceBar.value = currentExperience;
 
         UpdateHealthBars();
         UpdateGemStatus();
@@ -505,7 +508,56 @@ public class Character_Properties : MonoBehaviour
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
+
+    void ApplyStatsToGun(Gun gun)
+    {
+        if (gun == null)
+            return;
+
+        HeroStats s = GetStats();
+        gun.dmg = s.damage;
+        gun.attackSpeedMultiplier = s.attackSpeed;
+        gun.critChance = s.critChance;
+        gun.critDmgMultiplier = s.critDamageMultiplier;
+        gun.armorPenetration = s.armorPenetration;
+        gun.globalDamageMultiplier = s.globalDamageMultiplier;
+        gun.statusChance = s.statusChance;
+        gun.statusDuration = s.statusDuration;
+        gun.procChance = s.procChance;
+        gun.procPower = s.procPower;
+        gun.procCount = s.procCount;
+        gun.radius = 5f * s.attackRadius;
+        gun.skillRangeMultiplier = s.skillRange;
+        gun.abilityHitboxSize = s.abilityHitboxSize;
+        gun.cooldownReduction = s.cooldownReduction;
+        gun.castSpeedMultiplier = s.castSpeed;
+    }
+
+    public void AddGems(int amount)
+    {
+        gems += amount;
+        UpdateGemStatus();
+        AddExperience(amount);
+    }
+
+    public void AddExperience(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        currentExperience += amount;
+
+        while (currentExperience >= experienceForNextLevel)
+        {
+            currentExperience -= experienceForNextLevel;
+            level++;
+
+            experienceForNextLevel = Mathf.Max(experienceForNextLevel + 1, Mathf.RoundToInt(experienceForNextLevel * experienceGrowthMultiplier));
+
+            OnLevelUp?.Invoke();
         }
+        expirienceBar.maxValue = experienceForNextLevel;
+        expirienceBar.DOValue(currentExperience, 1f);
     }
 
     public void AddGems(int amount)
@@ -533,8 +585,20 @@ public class Character_Properties : MonoBehaviour
             );
 
             OnLevelUp?.Invoke();
-        }
+    void UpdateGemStatus()
+    {
+        if (gemStatus != null)
+            gemStatus.text = gems.ToString();
     }
+
+    void UpdateHealthBars()
+    {
+        float maxHealth = GetStats().maxHealth;
+        foreach (var bar in healthBars)
+        {
+            bar.maxValue = maxHealth;
+            bar.value = currentHealth;
+        }
 
     void UpdateGemStatus()
     {

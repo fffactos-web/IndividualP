@@ -16788,6 +16788,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d83329bcee0b62845b07ceff1e82697d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackDistance: 7
   damage: 5
 --- !u!114 &4790690852795589655
 MonoBehaviour:
@@ -16803,9 +16804,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 25
   currentHealth: 25
+  armor: 0
+  resistance: 0
+  hasStatus: 0
+  statusTimer: 0
   stackResetTime: 0.5
   spawner: {fileID: 0}
   dieEffect: {fileID: 0}
+  baseGemCount: 2
+  gemCountPerDifficulty: 2
+  coneHeight: 1.2
+  coneRadius: 1
 --- !u!136 &1442027657877851453
 CapsuleCollider:
   m_ObjectHideFlags: 0
