@@ -61,6 +61,7 @@ public class Gun : MonoBehaviour
         PoolManager.I.shotEffectPool
             .Spawn(firePoint.position, firePoint.rotation);
 
+<<<<<<< HEAD
         Ray ray = Camera.main.ScreenPointToRay(crosshair.position);
 
         if (!Physics.Raycast(ray, out RaycastHit hit, 10000f, hitMask))
@@ -84,6 +85,129 @@ public class Gun : MonoBehaviour
             owner.currentHealth =
                 Mathf.Min(owner.maxHealth, owner.currentHealth + dealt * owner.lifeSteal);
     }
+=======
+        Vector2 screenPoint =
+            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
+        Ray camRay = Camera.main.ScreenPointToRay(screenPoint);
+        if (Physics.Raycast(camRay, out RaycastHit hit, 10000f, hitMask, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.collider.TryGetComponent(out Zombie_Head head))
+            {
+                if (head.zombieProperies.currentHealth - dmg * dmgMultiplier * critDmgMultiplier > 0)
+                    head.zombieProperies.GetDamage(dmg * dmgMultiplier * critDmgMultiplier);
+                else
+                    head.zombieProperies.GetDamage(head.zombieProperies.currentHealth);
+            }
+            else if (hit.collider.TryGetComponent(out Zombie_Properies zombie))
+            {
+                if (zombie.currentHealth - dmg * dmgMultiplier > 0)
+                    zombie.GetDamage(dmg * dmgMultiplier);
+                else
+                    zombie.GetDamage(zombie.currentHealth);
+            }
+        }
+    }
+    void PierceShot()
+    {
+        StartCooldown();
+
+        PoolManager.I.shotEffectPool
+            .Spawn(firePoint.position, firePoint.rotation);
+
+        Vector2 screenPoint =
+            RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
+        Ray ray = Camera.main.ScreenPointToRay(screenPoint);
+
+        RaycastHit[] hits = Physics.RaycastAll(ray, 10000f, hitMask, QueryTriggerInteraction.Ignore);
+
+        Vector3 endPoint =
+            firePoint.position + ray.direction * 60f; // åñëè ïóñòî
+
+        if (hits.Length > 0)
+        {
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+            float currentDamage = dmg * dmgMultiplier;
+
+            foreach (var hit in hits)
+            {
+                if (hit.collider.TryGetComponent(out Zombie_Head head))
+                {
+                    DealDamage(head.zombieProperies, currentDamage * critDmgMultiplier);
+                }
+                else if (hit.collider.TryGetComponent(out Zombie_Properies zombie))
+                {
+                    DealDamage(zombie, currentDamage);
+                }
+                else
+                {
+                    endPoint = hit.point;
+                    break;
+                }
+
+                endPoint = hit.point;
+                currentDamage *= 0.8f;
+                if (currentDamage < 1f)
+                    break;
+            }
+        }
+
+        DrawPierceLine(firePoint.position, endPoint);
+    }
+
+    void LaunchRocket()
+    {
+        StartCooldown();
+        Rocket rocket = PoolManager.I.rocketsPool.Spawn(firePoint.position, firePoint.rotation).GetComponent<Rocket>();
+        rocket.dmg = dmg;
+        rocket.radius = radius;
+    }
+
+    void DealDamage(Zombie_Properies zombie, float damage)
+    {
+        float dmgToDeal = Mathf.Min(damage, zombie.currentHealth);
+        zombie.GetDamage(dmgToDeal);
+    }
+
+    void DrawPierceLine(Vector3 start, Vector3 end)
+    {
+        GameObject pierceShot =
+            PoolManager.I.pierceShotPool.Spawn(start, firePoint.rotation);
+
+        LineRenderer line = pierceShot.GetComponent<LineRenderer>();
+
+        line.positionCount = 2;
+        line.useWorldSpace = true;
+        line.SetPosition(0, start);
+        line.SetPosition(1, end);
+
+        // === FADE ===
+        Color startColor = line.startColor;
+        Color endColor = line.endColor;
+
+        startColor.a = 1f;
+        endColor.a = 1f;
+
+        line.startColor = startColor;
+        line.endColor = endColor;
+
+        DOVirtual.Float(1f, 0f, 2f, a =>
+        {
+            startColor.a = a;
+            endColor.a = a;
+            line.startColor = startColor;
+            line.endColor = endColor;
+        })
+        .OnComplete(() =>
+        {
+            PoolManager.I.pierceShotPool.Despawn(pierceShot);
+        });
+    }
+
+
+
+
+>>>>>>> parent of 97be9cb (Merge pull request #5 from fffactos-web/ss5vvl-codex/fix-character-shooting-logic)
 
     void StartCooldown()
     {

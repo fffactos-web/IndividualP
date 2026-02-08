@@ -12,4 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a61f135d554d6ec44b7805d6f21e3d40, type: 3}
   m_Name: GunEffectsData
   m_EditorClassIdentifier: 
-  entries: []
+  entries:
+  - trigger: 0
+    procChance: 0
+    action: {fileID: 0}
+    cooldownSeconds: 0
+  - trigger: 0
+    procChance: 0
+    action: {fileID: 0}
+    cooldownSeconds: 0
+  - trigger: 0
+    procChance: 0
+    action: {fileID: 0}
+    cooldownSeconds: 0
+  - trigger: 0
+    procChance: 0
+    action: {fileID: 0}
+    cooldownSeconds: 0

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 597e4d2d36c0db14ab7888e778d1e1f6, type: 3}
   m_Name: Ultra Posion
   m_EditorClassIdentifier: 
-  damagePerSecond: 5
+  damagePerSecond: 15
   duration: 3
-  tickInterval: 1
-  stacking: 0
+  tickInterval: 0.5
+  stacking: 1

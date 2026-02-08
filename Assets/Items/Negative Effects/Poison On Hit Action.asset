@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   effectId: effect.poison_on_hit.basic
   debugName: Poison On Hit (Example)
-  poisonChance: 0.45
-  damagePerSecond: 6
+  poisonChance: 1
+  damagePerSecond: 100
   duration: 4
   tickInterval: 1
   stacking: 1
