@@ -189,6 +189,13 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         for (int i = 0; i < gemCount; i++)
         {
             float angle = Random.Range(0f, Mathf.PI * 2f);
+            float radius = Random.Range(0f, coneRadius);
+            float height = Random.Range(0.3f, coneHeight);
+
+            Vector3 offset = new Vector3(Mathf.Cos(angle) * radius, height, Mathf.Sin(angle) * radius);
+            PoolManager.I.gemPool.Spawn(transform.position + offset, Quaternion.identity);
+        }
+    }
             float radius = Random.Range(coneRadius, coneRadius * 2);
             Vector3 groundOffset = new Vector3(
                 Mathf.Cos(angle) * radius,

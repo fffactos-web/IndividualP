@@ -1,5 +1,6 @@
 using DG.Tweening;
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
@@ -84,7 +85,7 @@ public class Character_Properties : MonoBehaviour
 
     [Header("Progression")]
     [SerializeField] int startExperienceForNextLevel = 20;
-    [SerializeField] float experienceGrowthMultiplier = 2f;
+    [SerializeField] float experienceGrowthMultiplier = 1.25f;
 
     float currentHealth;
     float currentShield;
@@ -99,8 +100,10 @@ public class Character_Properties : MonoBehaviour
     public float kills;
     public float gems;
 
+    readonly List<HeroItemDefinition> equippedItems = new List<HeroItemDefinition>();
+    public IReadOnlyList<HeroItemDefinition> EquippedItems => equippedItems;
+
     public int level { get; private set; } = 1;
-    [SerializeField]
     public int currentExperience { get; private set; }
     public int experienceForNextLevel { get; private set; }
 
@@ -333,6 +336,203 @@ public class Character_Properties : MonoBehaviour
         gun.castSpeedMultiplier = s.castSpeed;
     }
 
+
+    public bool ApplyItem(HeroItemDefinition item)
+    {
+        if (item == null)
+            return false;
+
+        if (!item.Stackable && equippedItems.Contains(item))
+            return false;
+
+        int slotLimit = GetStats().itemSlotLimit;
+        if (equippedItems.Count >= slotLimit)
+            return false;
+
+        equippedItems.Add(item);
+
+        foreach (var modifier in item.StatModifiers)
+            ApplyModifier(modifier);
+
+        ChangeGunProperties();
+        UpdateHealthBars();
+        return true;
+    }
+
+    public bool RemoveItem(HeroItemDefinition item)
+    {
+        if (item == null)
+            return false;
+
+        if (!equippedItems.Remove(item))
+            return false;
+
+        foreach (var modifier in item.StatModifiers)
+            ApplyModifier(new HeroStatModifier { stat = modifier.stat, value = -modifier.value });
+
+        ChangeGunProperties();
+        UpdateHealthBars();
+        return true;
+    }
+
+    public void ApplyModifier(HeroStatModifier modifier)
+    {
+        switch (modifier.stat)
+        {
+            case HeroStatType.Damage:
+                bonusStats.damage += modifier.value;
+                break;
+            case HeroStatType.AttackSpeed:
+                bonusStats.attackSpeed += modifier.value;
+                break;
+            case HeroStatType.CritChance:
+                bonusStats.critChance += modifier.value;
+                break;
+            case HeroStatType.CritDamageMultiplier:
+                bonusStats.critDamageMultiplier += modifier.value;
+                break;
+            case HeroStatType.ArmorPenetration:
+                bonusStats.armorPenetration += modifier.value;
+                break;
+            case HeroStatType.GlobalDamageMultiplier:
+                bonusStats.globalDamageMultiplier += modifier.value;
+                break;
+            case HeroStatType.DamageVsStatusTargets:
+                bonusStats.damageVsStatusTargets += modifier.value;
+                break;
+            case HeroStatType.MissingHealthDamage:
+                bonusStats.missingHealthDamage += modifier.value;
+                break;
+            case HeroStatType.LowHealthPower:
+                bonusStats.lowHealthPower += modifier.value;
+                break;
+
+            case HeroStatType.MaxHealth:
+                bonusStats.maxHealth += modifier.value;
+                break;
+            case HeroStatType.HealthRegen:
+                bonusStats.healthRegen += modifier.value;
+                break;
+            case HeroStatType.Shield:
+                bonusStats.shield += modifier.value;
+                currentShield = Mathf.Max(0f, currentShield + modifier.value);
+                break;
+            case HeroStatType.MaxShield:
+                bonusStats.maxShield += modifier.value;
+                break;
+            case HeroStatType.Armor:
+                bonusStats.armor += modifier.value;
+                break;
+            case HeroStatType.Resistance:
+                bonusStats.resistance += modifier.value;
+                break;
+            case HeroStatType.Lifesteal:
+                bonusStats.lifesteal += modifier.value;
+                break;
+
+            case HeroStatType.MoveSpeed:
+                bonusStats.moveSpeed += modifier.value;
+                break;
+            case HeroStatType.DashSpeed:
+                bonusStats.dashSpeed += modifier.value;
+                break;
+            case HeroStatType.JumpCount:
+                bonusStats.jumpCount += Mathf.RoundToInt(modifier.value);
+                break;
+            case HeroStatType.AirControl:
+                bonusStats.airControl += modifier.value;
+                break;
+            case HeroStatType.GlobalAcceleration:
+                bonusStats.globalAcceleration += modifier.value;
+                break;
+
+            case HeroStatType.CooldownReduction:
+                bonusStats.cooldownReduction += modifier.value;
+                break;
+            case HeroStatType.CastSpeed:
+                bonusStats.castSpeed += modifier.value;
+                break;
+
+            case HeroStatType.SkillResource:
+                bonusStats.skillResource += modifier.value;
+                currentSkillResource = Mathf.Max(0f, currentSkillResource + modifier.value);
+                break;
+            case HeroStatType.MaxSkillResource:
+                bonusStats.maxSkillResource += modifier.value;
+                break;
+            case HeroStatType.ResourceRegen:
+                bonusStats.resourceRegen += modifier.value;
+                break;
+
+            case HeroStatType.ProcChance:
+                bonusStats.procChance += modifier.value;
+                break;
+            case HeroStatType.ProcPower:
+                bonusStats.procPower += modifier.value;
+                break;
+            case HeroStatType.ProcCount:
+                bonusStats.procCount += Mathf.RoundToInt(modifier.value);
+                break;
+
+            case HeroStatType.StatusChance:
+                bonusStats.statusChance += modifier.value;
+                break;
+            case HeroStatType.StatusDuration:
+                bonusStats.statusDuration += modifier.value;
+                break;
+
+            case HeroStatType.KillBonus:
+                bonusStats.killBonus += modifier.value;
+                break;
+            case HeroStatType.KillStreakBonus:
+                bonusStats.killStreakBonus += modifier.value;
+                break;
+            case HeroStatType.OnHitTakenEffectPower:
+                bonusStats.onHitTakenEffectPower += modifier.value;
+                break;
+            case HeroStatType.StatExchange:
+                bonusStats.statExchange += modifier.value;
+                break;
+
+            case HeroStatType.AttackRadius:
+                bonusStats.attackRadius += modifier.value;
+                break;
+            case HeroStatType.SkillRange:
+                bonusStats.skillRange += modifier.value;
+                break;
+            case HeroStatType.AbilityHitboxSize:
+                bonusStats.abilityHitboxSize += modifier.value;
+                break;
+            case HeroStatType.ItemSlotLimit:
+                bonusStats.itemSlotLimit += Mathf.RoundToInt(modifier.value);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+
+    void ApplyStatsToGun(Gun gun)
+    {
+        if (gun == null)
+            return;
+
+        HeroStats s = GetStats();
+        gun.dmg = s.damage;
+        gun.attackSpeedMultiplier = s.attackSpeed;
+        gun.critChance = s.critChance;
+        gun.critDmgMultiplier = s.critDamageMultiplier;
+        gun.armorPenetration = s.armorPenetration;
+        gun.globalDamageMultiplier = s.globalDamageMultiplier;
+        gun.statusChance = s.statusChance;
+        gun.statusDuration = s.statusDuration;
+        gun.procChance = s.procChance;
+        gun.procPower = s.procPower;
+        gun.procCount = s.procCount;
+        gun.radius = 5f * s.attackRadius;
+        gun.skillRangeMultiplier = s.skillRange;
+        gun.abilityHitboxSize = s.abilityHitboxSize;
+        gun.cooldownReduction = s.cooldownReduction;
+        gun.castSpeedMultiplier = s.castSpeed;
+    }
+
     public void AddGems(int amount)
     {
         gems += amount;
@@ -359,6 +559,46 @@ public class Character_Properties : MonoBehaviour
         expirienceBar.maxValue = experienceForNextLevel;
         expirienceBar.DOValue(currentExperience, 1f);
     }
+
+    public void AddGems(int amount)
+    {
+        gems += amount;
+        UpdateGemStatus();
+        AddExperience(amount);
+    }
+
+    public void AddExperience(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        currentExperience += amount;
+
+        while (currentExperience >= experienceForNextLevel)
+        {
+            currentExperience -= experienceForNextLevel;
+            level++;
+
+            experienceForNextLevel = Mathf.Max(
+                experienceForNextLevel + 1,
+                Mathf.RoundToInt(experienceForNextLevel * experienceGrowthMultiplier)
+            );
+
+            OnLevelUp?.Invoke();
+    void UpdateGemStatus()
+    {
+        if (gemStatus != null)
+            gemStatus.text = gems.ToString();
+    }
+
+    void UpdateHealthBars()
+    {
+        float maxHealth = GetStats().maxHealth;
+        foreach (var bar in healthBars)
+        {
+            bar.maxValue = maxHealth;
+            bar.value = currentHealth;
+        }
 
     void UpdateGemStatus()
     {
