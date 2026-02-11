@@ -216,6 +216,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
                 request.high.y,
                 request.highLevel);
         }
+
+        return result;
     }
 
     private void BuildRampPathFromLowToHigh(int lowX, int lowZ, int lowL, int highX, int highZ, int highL)
