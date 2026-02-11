@@ -5,12 +5,12 @@ using UnityEngine;
 public class ProceduralFloorGenerator : MonoBehaviour
 {
     [Header("Grid")]
-    public int width = 40;
-    public int depth = 40;
-    public int cellSize = 100;
+    [Min(1)] public int width = 40;
+    [Min(1)] public int depth = 40;
+    [Min(1)] public int cellSize = 100;
 
     [Header("Map size")]
-    [Tooltip("If enabled, map grid dimensions are derived from world size and cell size.")]
+    [Tooltip("If enabled, map dimensions are computed from world size and cell size.")]
     public bool useWorldSize = false;
     [Min(1)] public int mapSizeX = 4000;
     [Min(1)] public int mapSizeZ = 4000;
@@ -18,22 +18,24 @@ public class ProceduralFloorGenerator : MonoBehaviour
     [Header("Height")]
     [Min(1)] public int levelsCount = 6;
     public int heightStep = 50;
-    [Range(0f, 1f)] public float rampRaiseChance = 0.35f;
+    [Range(0f, 1f)]
+    [Tooltip("If random value is greater than this threshold, next step raises height by one level.")]
+    public float rampRaiseThreshold = 0.65f;
     public int seed = 0;
 
     [Header("Prefabs")]
     public GameObject tilePrefab;
     public GameObject rampPrefab;
 
+    [Header("Ramp model")]
     public float rampModelLength = 1f;
     public float rampModelHeight = 1f;
     public float rampModelWidth = 1f;
 
-    [Header("Placement controls")]
-    public float[] lateralOffsets = new float[] { 0f, 0.25f, -0.25f, 0.5f, -0.5f };
+    [Header("Ramp placement")]
+    public float[] lateralOffsets = { 0f, 0.25f, -0.25f, 0.5f, -0.5f };
     [Min(1)] public int maxHeightLevelsPerSegment = 2;
-    public int maxPlacementAttempts = 5;
-    [Tooltip("Do not remove base tile by default. Enable only if you need a clean ramp opening.")]
+    [Min(1)] public int maxPlacementAttempts = 5;
     public bool replaceTileWithRamp = false;
 
     [Header("Options")]
@@ -41,313 +43,302 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
     private struct RampRequest
     {
-        public int lowX;
-        public int lowZ;
-        public int lowLevel;
-        public int highX;
-        public int highZ;
-        public int highLevel;
+        public readonly Vector2Int low;
+        public readonly Vector2Int high;
+        public readonly int lowLevel;
+        public readonly int highLevel;
 
-        public RampRequest(int lowX, int lowZ, int lowLevel, int highX, int highZ, int highLevel)
+        public RampRequest(Vector2Int low, Vector2Int high, int lowLevel, int highLevel)
         {
-            this.lowX = lowX;
-            this.lowZ = lowZ;
+            this.low = low;
+            this.high = high;
             this.lowLevel = lowLevel;
-            this.highX = highX;
-            this.highZ = highZ;
             this.highLevel = highLevel;
         }
     }
 
-    // internal
     private int[,] levelMap;
-    private HashSet<Vector2Int> tilePositions = new HashSet<Vector2Int>();
-    private List<GameObject> spawned = new List<GameObject>();
-    private List<Bounds> rampBounds = new List<Bounds>();
     private int activeWidth;
     private int activeDepth;
+
+    private readonly HashSet<Vector2Int> tilePositions = new HashSet<Vector2Int>();
+    private readonly List<GameObject> spawned = new List<GameObject>();
+    private readonly List<Bounds> rampBounds = new List<Bounds>();
+
+    private static readonly Vector2Int[] NeighborDirs =
+    {
+        new Vector2Int(1, 0),
+        new Vector2Int(-1, 0),
+        new Vector2Int(0, 1),
+        new Vector2Int(0, -1)
+    };
 
     [ContextMenu("Generate")]
     public void Generate()
     {
         ClearAll();
-        ApplyMapSizeSettings();
-
-        if (seed == 0)
-            seed = Random.Range(-1000000, 1000000);
-
-        Random.InitState(seed);
+        SanitizeSettings();
         ResolveMapDimensions();
 
-        int safeLevelsCount = Mathf.Max(1, levelsCount);
-        int totalCells = activeWidth * activeDepth;
+        int randomSeed = seed == 0 ? Random.Range(-1000000, 1000000) : seed;
+        Random.InitState(randomSeed);
 
         levelMap = new int[activeWidth, activeDepth];
         bool[,] visited = new bool[activeWidth, activeDepth];
+
         for (int x = 0; x < activeWidth; x++)
             for (int z = 0; z < activeDepth; z++)
                 levelMap[x, z] = -1;
 
-        // 1) Pick random point C.
-        Vector2Int c = new Vector2Int(Random.Range(0, activeWidth), Random.Range(0, activeDepth));
+        int targetCellCount = activeWidth * activeDepth;
+        int maxLevel = Mathf.Max(1, levelsCount) - 1;
 
-        // Search order starts from C as requested.
-        List<Vector2Int> visitedOrder = new List<Vector2Int>(totalCells) { c };
+        Vector2Int startC = new Vector2Int(Random.Range(0, activeWidth), Random.Range(0, activeDepth));
+
+        List<Vector2Int> progressionOrder = new List<Vector2Int>(targetCellCount);
         List<RampRequest> rampRequests = new List<RampRequest>();
 
-        visited[c.x, c.y] = true;
-        levelMap[c.x, c.y] = 0;
+        progressionOrder.Add(startC);
+        visited[startC.x, startC.y] = true;
+        levelMap[startC.x, startC.y] = 0;
 
         int visitedCount = 1;
-        Vector2Int current = c;
+        Vector2Int current = startC;
 
-        // 2..5) Random walk with restarts from cells reachable from C order.
-        while (visitedCount < totalCells)
+        while (visitedCount < targetCellCount)
         {
-            var neighbors = GetUnvisitedNeighbors(current, visited);
-            if (neighbors.Count > 0)
+            Vector2Int next;
+            if (TryGetRandomUnvisitedNeighbor(current, visited, out next))
             {
-                Vector2Int next = neighbors[Random.Range(0, neighbors.Count)];
                 int currentLevel = levelMap[current.x, current.y];
-
                 int nextLevel = currentLevel;
-                if (Random.value > rampRaiseChance && currentLevel < safeLevelsCount - 1)
+
+                float roll = Random.value;
+                if (roll > rampRaiseThreshold && currentLevel < maxLevel)
                     nextLevel = currentLevel + 1;
 
                 visited[next.x, next.y] = true;
                 levelMap[next.x, next.y] = nextLevel;
-                visitedOrder.Add(next);
+                progressionOrder.Add(next);
                 visitedCount++;
 
                 if (nextLevel > currentLevel)
-                {
-                    rampRequests.Add(new RampRequest(
-                        current.x,
-                        current.y,
-                        currentLevel,
-                        next.x,
-                        next.y,
-                        nextLevel));
-                }
+                    rampRequests.Add(new RampRequest(current, next, currentLevel, nextLevel));
 
                 current = next;
                 continue;
             }
 
-            bool foundContinuation = false;
-            for (int i = 0; i < visitedOrder.Count; i++)
-            {
-                Vector2Int candidate = visitedOrder[i];
-                if (GetUnvisitedNeighbors(candidate, visited).Count == 0)
-                    continue;
-
-                current = candidate;
-                foundContinuation = true;
-                break;
-            }
-
-            if (!foundContinuation)
+            if (!TryFindContinuationFromC(progressionOrder, visited, out current))
                 break;
         }
 
-        // Spawn tiles for every filled map cell.
+        SpawnTiles();
+        SpawnRamps(rampRequests);
+    }
+
+    private bool TryGetRandomUnvisitedNeighbor(Vector2Int origin, bool[,] visited, out Vector2Int neighbor)
+    {
+        Vector2Int[] candidates = new Vector2Int[4];
+        int count = 0;
+
+        for (int i = 0; i < NeighborDirs.Length; i++)
+        {
+            Vector2Int n = origin + NeighborDirs[i];
+            if (!InBounds(n.x, n.y) || visited[n.x, n.y])
+                continue;
+
+            candidates[count] = n;
+            count++;
+        }
+
+        if (count == 0)
+        {
+            neighbor = default;
+            return false;
+        }
+
+        neighbor = candidates[Random.Range(0, count)];
+        return true;
+    }
+
+    private bool TryFindContinuationFromC(List<Vector2Int> progressionOrder, bool[,] visited, out Vector2Int continuation)
+    {
+        for (int i = 0; i < progressionOrder.Count; i++)
+        {
+            Vector2Int candidate = progressionOrder[i];
+            if (TryGetRandomUnvisitedNeighbor(candidate, visited, out _))
+            {
+                continuation = candidate;
+                return true;
+            }
+        }
+
+        continuation = default;
+        return false;
+    }
+
+    private void SpawnTiles()
+    {
+        if (tilePrefab == null)
+            return;
+
         for (int x = 0; x < activeWidth; x++)
         {
             for (int z = 0; z < activeDepth; z++)
             {
-                int lvl = Mathf.Max(0, levelMap[x, z]);
-                levelMap[x, z] = lvl;
+                int level = Mathf.Max(0, levelMap[x, z]);
+                levelMap[x, z] = level;
 
-                if (tilePrefab == null)
-                    continue;
+                Vector3 worldPos = GridToWorld(x, z, level);
+                GameObject tile = Instantiate(tilePrefab, worldPos, Quaternion.identity, transform);
+                tile.name = $"Tile [{x},{z}] L{level}";
 
-                Vector3 worldPos = GridToWorld(x, z, lvl);
-                GameObject t = Instantiate(tilePrefab, worldPos, Quaternion.identity, transform);
-                t.name = $"Tile [{x},{z}] L{lvl}";
-                spawned.Add(t);
+                spawned.Add(tile);
                 tilePositions.Add(new Vector2Int(x, z));
             }
         }
+    }
 
+    private void SpawnRamps(List<RampRequest> rampRequests)
+    {
         if (rampPrefab == null)
             return;
 
-        foreach (var request in rampRequests)
+        for (int i = 0; i < rampRequests.Count; i++)
         {
+            RampRequest request = rampRequests[i];
             BuildRampPathFromLowToHigh(
-                request.lowX,
-                request.lowZ,
+                request.low.x,
+                request.low.y,
                 request.lowLevel,
-                request.highX,
-                request.highZ,
+                request.high.x,
+                request.high.y,
                 request.highLevel);
-        }
-    }
-
-    List<Vector2Int> GetUnvisitedNeighbors(Vector2Int pos, bool[,] visited)
-    {
-        List<Vector2Int> result = new List<Vector2Int>(4);
-        foreach (var d in Neighbors4())
-        {
-            int nx = pos.x + d.x;
-            int nz = pos.y + d.y;
-            if (!InBounds(nx, nz) || visited[nx, nz])
-                continue;
-
-            result.Add(new Vector2Int(nx, nz));
         }
 
         return result;
     }
 
-    /// <summary>
-    /// Builds one or more ramp segments from a low tile to an adjacent higher tile.
-    /// Path is committed only when all segments are valid, preventing dangling ramps.
-    /// </summary>
-    void BuildRampPathFromLowToHigh(int lowX, int lowZ, int lowL, int highX, int highZ, int highL)
+    private void BuildRampPathFromLowToHigh(int lowX, int lowZ, int lowL, int highX, int highZ, int highL)
     {
         int levelDiff = Mathf.Abs(highL - lowL);
         if (levelDiff <= 0)
             return;
 
         int maxLevelsPerSegment = Mathf.Max(1, maxHeightLevelsPerSegment);
-        int segments = Mathf.CeilToInt((float)levelDiff / maxLevelsPerSegment);
-        segments = Mathf.Max(1, segments);
+        int segmentCount = Mathf.Max(1, Mathf.CeilToInt((float)levelDiff / maxLevelsPerSegment));
 
-        int remaining = levelDiff;
+        int remainingLevels = levelDiff;
         int currentLowLevel = lowL;
 
         Vector3 lowCenter = GridToWorld(lowX, lowZ, lowL);
         Vector3 highCenter = GridToWorld(highX, highZ, highL);
-        Vector3 dirWorld = (highCenter - lowCenter);
-        dirWorld.y = 0f;
-        dirWorld.Normalize();
-        Vector3 perp = Vector3.Cross(Vector3.up, dirWorld).normalized;
+        Vector3 direction = highCenter - lowCenter;
+        direction.y = 0f;
+        direction.Normalize();
 
-        List<GameObject> pathRamps = new List<GameObject>();
-        List<Bounds> pathBounds = new List<Bounds>();
+        Vector3 perpendicular = Vector3.Cross(Vector3.up, direction).normalized;
 
-        bool failed = false;
+        List<GameObject> tempRamps = new List<GameObject>();
+        List<Bounds> tempBounds = new List<Bounds>();
 
-        for (int s = 0; s < segments; s++)
+        for (int segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++)
         {
-            int partLevels = Mathf.Min(remaining, Mathf.CeilToInt((float)levelDiff / segments));
-            int segLowLevel = currentLowLevel;
-            int segHighLevel = currentLowLevel + partLevels;
+            int partLevels = Mathf.Min(remainingLevels, Mathf.CeilToInt((float)levelDiff / segmentCount));
+            int segmentLowLevel = currentLowLevel;
+            int segmentHighLevel = currentLowLevel + partLevels;
 
-            float targetVertical = partLevels * heightStep;
-            float targetHorizontal = (float)cellSize / segments;
+            float horizontalSpan = (float)cellSize / segmentCount;
+            float verticalSpan = partLevels * heightStep;
 
             bool placed = false;
+            int attemptCount = Mathf.Min(maxPlacementAttempts, lateralOffsets.Length);
 
-            for (int attempt = 0; attempt < Mathf.Min(maxPlacementAttempts, lateralOffsets.Length); attempt++)
+            for (int attempt = 0; attempt < attemptCount; attempt++)
             {
-                float lateral = lateralOffsets[attempt];
-                Vector3 basePos = GridToWorld(lowX, lowZ, segLowLevel) + dirWorld * (s * targetHorizontal) + perp * (lateral * cellSize);
-                basePos.y = segLowLevel * heightStep;
+                float lateralOffset = lateralOffsets[attempt];
+                Vector3 basePosition = GridToWorld(lowX, lowZ, segmentLowLevel)
+                    + direction * (segmentIndex * horizontalSpan)
+                    + perpendicular * (lateralOffset * cellSize);
+                basePosition.y = segmentLowLevel * heightStep;
 
-                Vector3 startAnchor = basePos;
-                Vector3 endAnchor = basePos + dirWorld * targetHorizontal;
-                endAnchor.y = segHighLevel * heightStep;
+                Vector3 startAnchor = basePosition;
+                Vector3 endAnchor = basePosition + direction * horizontalSpan;
+                endAnchor.y = segmentHighLevel * heightStep;
 
-                if (!HasAnchorAt(startAnchor, segLowLevel, pathBounds))
+                if (!HasAnchorAt(startAnchor, segmentLowLevel, tempBounds))
                     continue;
 
-                bool isFinalSegment = s == segments - 1;
-                if (isFinalSegment && !HasAnchorAt(endAnchor, segHighLevel, pathBounds))
+                bool isLast = segmentIndex == segmentCount - 1;
+                if (isLast && !HasAnchorAt(endAnchor, segmentHighLevel, tempBounds))
                     continue;
 
-                Quaternion rot = Quaternion.LookRotation(dirWorld, Vector3.up);
+                Quaternion rotation = Quaternion.LookRotation(direction, Vector3.up);
+                Vector3 scale = new Vector3(
+                    horizontalSpan / Mathf.Max(1e-5f, rampModelLength),
+                    verticalSpan / Mathf.Max(1e-5f, rampModelHeight),
+                    cellSize / Mathf.Max(1e-5f, rampModelWidth));
 
-                float scaleX = targetHorizontal / Mathf.Max(1e-5f, rampModelLength);
-                float scaleY = targetVertical / Mathf.Max(1e-5f, rampModelHeight);
-                float scaleZ = cellSize / Mathf.Max(1e-5f, rampModelWidth);
+                GameObject ramp = Instantiate(rampPrefab, basePosition, rotation, transform);
+                ramp.transform.localScale = scale;
+                ramp.name = $"Ramp [{lowX},{lowZ}]->[{highX},{highZ}] seg{segmentIndex} L{segmentLowLevel}->{segmentHighLevel}";
 
-                Vector3 scale = new Vector3(scaleX, scaleY, scaleZ);
+                Bounds bounds = CalcBoundsRecursive(ramp);
+                bounds.Expand(0.01f);
 
-                var r = Instantiate(rampPrefab, basePos, rot, transform);
-                r.transform.localScale = scale;
-                r.name = $"Ramp [{lowX},{lowZ}]->[{highX},{highZ}] seg{s} L{segLowLevel}->{segHighLevel}";
-
-                Bounds b = CalcBoundsRecursive(r);
-                b.Expand(0.01f);
-
-                bool intersects = false;
-                foreach (var pb in rampBounds)
+                if (IntersectsAny(bounds, rampBounds) || IntersectsAny(bounds, tempBounds))
                 {
-                    if (pb.Intersects(b))
-                    {
-                        intersects = true;
-                        break;
-                    }
-                }
-
-                if (!intersects)
-                {
-                    foreach (var pb in pathBounds)
-                    {
-                        if (pb.Intersects(b))
-                        {
-                            intersects = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!intersects)
-                {
-                    pathBounds.Add(b);
-                    pathRamps.Add(r);
-                    placed = true;
-                    break;
-                }
-
 #if UNITY_EDITOR
-                if (!Application.isPlaying) DestroyImmediate(r);
-                else Destroy(r);
+                    if (!Application.isPlaying) DestroyImmediate(ramp);
+                    else Destroy(ramp);
 #else
-                Destroy(r);
+                    Destroy(ramp);
 #endif
+                    continue;
+                }
+
+                tempRamps.Add(ramp);
+                tempBounds.Add(bounds);
+                placed = true;
+                break;
             }
 
             if (!placed)
             {
-                failed = true;
-                break;
+                CleanupObjects(tempRamps);
+                return;
             }
 
-            remaining -= partLevels;
-            currentLowLevel = segHighLevel;
+            remainingLevels -= partLevels;
+            currentLowLevel = segmentHighLevel;
         }
 
-        if (failed || remaining > 0)
+        if (remainingLevels > 0)
         {
-            foreach (var r in pathRamps)
-            {
-                if (r == null) continue;
-#if UNITY_EDITOR
-                if (!Application.isPlaying) DestroyImmediate(r);
-                else Destroy(r);
-#else
-                Destroy(r);
-#endif
-            }
+            CleanupObjects(tempRamps);
             return;
         }
 
-        rampBounds.AddRange(pathBounds);
-        spawned.AddRange(pathRamps);
+        rampBounds.AddRange(tempBounds);
+        spawned.AddRange(tempRamps);
 
         if (replaceTileWithRamp)
             RemoveTileAt(lowX, lowZ);
     }
 
-    bool HasAnchorAt(Vector3 worldPos, int expectedLevel)
+    private static bool IntersectsAny(Bounds bounds, List<Bounds> list)
     {
-        return HasAnchorAt(worldPos, expectedLevel, null);
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i].Intersects(bounds))
+                return true;
+        }
+
+        return false;
     }
 
-    bool HasAnchorAt(Vector3 worldPos, int expectedLevel, List<Bounds> extraBounds)
+    private bool HasAnchorAt(Vector3 worldPos, int expectedLevel, List<Bounds> extraBounds)
     {
         int safeCellSize = Mathf.Max(1, cellSize);
         int tileX = Mathf.RoundToInt(worldPos.x / safeCellSize);
@@ -361,85 +352,94 @@ public class ProceduralFloorGenerator : MonoBehaviour
             return true;
 
         float expectedY = expectedLevel * heightStep;
-        const float anchorToleranceY = 0.1f;
+        const float toleranceY = 0.1f;
 
-        foreach (var b in rampBounds)
+        if (ContainsYAnchor(rampBounds, worldPos, expectedY, toleranceY))
+            return true;
+
+        if (extraBounds != null && ContainsYAnchor(extraBounds, worldPos, expectedY, toleranceY))
+            return true;
+
+        return false;
+    }
+
+    private static bool ContainsYAnchor(List<Bounds> boundsList, Vector3 worldPos, float expectedY, float toleranceY)
+    {
+        for (int i = 0; i < boundsList.Count; i++)
         {
-            if (b.min.x <= worldPos.x && b.max.x >= worldPos.x &&
-                b.min.z <= worldPos.z && b.max.z >= worldPos.z &&
-                b.min.y - anchorToleranceY <= expectedY && b.max.y + anchorToleranceY >= expectedY)
-            {
+            Bounds b = boundsList[i];
+            bool containsXZ = b.min.x <= worldPos.x && b.max.x >= worldPos.x
+                && b.min.z <= worldPos.z && b.max.z >= worldPos.z;
+            bool containsY = b.min.y - toleranceY <= expectedY && b.max.y + toleranceY >= expectedY;
+
+            if (containsXZ && containsY)
                 return true;
-            }
-        }
-
-        if (extraBounds != null)
-        {
-            foreach (var b in extraBounds)
-            {
-                if (b.min.x <= worldPos.x && b.max.x >= worldPos.x &&
-                    b.min.z <= worldPos.z && b.max.z >= worldPos.z &&
-                    b.min.y - anchorToleranceY <= expectedY && b.max.y + anchorToleranceY >= expectedY)
-                {
-                    return true;
-                }
-            }
         }
 
         return false;
     }
 
-    void RemoveTileAt(int tx, int tz)
+    private void RemoveTileAt(int tx, int tz)
     {
-        Vector3 pos = GridToWorld(tx, tz, levelMap[tx, tz]);
-        foreach (var go in new List<GameObject>(spawned))
+        Vector3 targetPos = GridToWorld(tx, tz, levelMap[tx, tz]);
+
+        for (int i = spawned.Count - 1; i >= 0; i--)
         {
-            if (go == null) continue;
-            if (!go.name.StartsWith("Tile")) continue;
-            if (Vector3.Distance(go.transform.position, pos) < 0.1f)
-            {
-                spawned.Remove(go);
+            GameObject obj = spawned[i];
+            if (obj == null || !obj.name.StartsWith("Tile"))
+                continue;
+
+            if (Vector3.Distance(obj.transform.position, targetPos) > 0.1f)
+                continue;
+
+            spawned.RemoveAt(i);
+            tilePositions.Remove(new Vector2Int(tx, tz));
+
 #if UNITY_EDITOR
-                if (!Application.isPlaying) DestroyImmediate(go);
-                else Destroy(go);
+            if (!Application.isPlaying) DestroyImmediate(obj);
+            else Destroy(obj);
 #else
-                Destroy(go);
+            Destroy(obj);
 #endif
-                tilePositions.Remove(new Vector2Int(tx, tz));
-                break;
-            }
+            break;
         }
     }
 
-    static Bounds CalcBoundsRecursive(GameObject go)
+    private static void CleanupObjects(List<GameObject> objects)
     {
-        Renderer[] rs = go.GetComponentsInChildren<Renderer>();
-        if (rs == null || rs.Length == 0) return new Bounds(go.transform.position, Vector3.one * 0.001f);
-        Bounds b = rs[0].bounds;
-        for (int i = 1; i < rs.Length; i++) b.Encapsulate(rs[i].bounds);
-        return b;
-    }
-
-    Vector3 GridToWorld(int gx, int gz, int level)
-    {
-        float wx = gx * cellSize;
-        float wz = gz * cellSize;
-        float wy = level * heightStep;
-        return new Vector3(wx, wy, wz);
-    }
-
-    static Vector2Int[] Neighbors4()
-    {
-        return new Vector2Int[]
+        for (int i = 0; i < objects.Count; i++)
         {
-            new Vector2Int(1,0),
-            new Vector2Int(-1,0),
-            new Vector2Int(0,1),
-            new Vector2Int(0,-1)
-        };
+            if (objects[i] == null)
+                continue;
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying) DestroyImmediate(objects[i]);
+            else Destroy(objects[i]);
+#else
+            Destroy(objects[i]);
+#endif
+        }
     }
 
-    void ApplyMapSizeSettings()
+    private static Bounds CalcBoundsRecursive(GameObject go)
+    {
+        Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
+        if (renderers == null || renderers.Length == 0)
+            return new Bounds(go.transform.position, Vector3.one * 0.001f);
+
+        Bounds bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++)
+            bounds.Encapsulate(renderers[i].bounds);
+
+        return bounds;
+    }
+
+    private Vector3 GridToWorld(int gx, int gz, int level)
+    {
+        return new Vector3(gx * cellSize, level * heightStep, gz * cellSize);
+    }
+
+    private void SanitizeSettings()
     {
         width = Mathf.Max(1, width);
         depth = Mathf.Max(1, depth);
@@ -447,9 +447,14 @@ public class ProceduralFloorGenerator : MonoBehaviour
         mapSizeX = Mathf.Max(1, mapSizeX);
         mapSizeZ = Mathf.Max(1, mapSizeZ);
         levelsCount = Mathf.Max(1, levelsCount);
+        maxHeightLevelsPerSegment = Mathf.Max(1, maxHeightLevelsPerSegment);
+        maxPlacementAttempts = Mathf.Max(1, maxPlacementAttempts);
+
+        if (lateralOffsets == null || lateralOffsets.Length == 0)
+            lateralOffsets = new float[] { 0f };
     }
 
-    void ResolveMapDimensions()
+    private void ResolveMapDimensions()
     {
         int safeCellSize = Mathf.Max(1, cellSize);
 
@@ -457,30 +462,35 @@ public class ProceduralFloorGenerator : MonoBehaviour
         {
             activeWidth = Mathf.Max(1, Mathf.CeilToInt((float)mapSizeX / safeCellSize));
             activeDepth = Mathf.Max(1, Mathf.CeilToInt((float)mapSizeZ / safeCellSize));
+            return;
         }
-        else
-        {
-            activeWidth = Mathf.Max(1, width);
-            activeDepth = Mathf.Max(1, depth);
-        }
+
+        activeWidth = Mathf.Max(1, width);
+        activeDepth = Mathf.Max(1, depth);
     }
 
-    bool InBounds(int x, int z) => x >= 0 && x < activeWidth && z >= 0 && z < activeDepth;
+    private bool InBounds(int x, int z)
+    {
+        return x >= 0 && x < activeWidth && z >= 0 && z < activeDepth;
+    }
 
     [ContextMenu("ClearAll")]
     public void ClearAll()
     {
-        var cur = new List<Transform>();
-        foreach (Transform t in transform) cur.Add(t);
-        foreach (var c in cur)
+        List<Transform> children = new List<Transform>();
+        foreach (Transform child in transform)
+            children.Add(child);
+
+        for (int i = 0; i < children.Count; i++)
         {
 #if UNITY_EDITOR
-            if (!Application.isPlaying) DestroyImmediate(c.gameObject);
-            else Destroy(c.gameObject);
+            if (!Application.isPlaying) DestroyImmediate(children[i].gameObject);
+            else Destroy(children[i].gameObject);
 #else
-            Destroy(c.gameObject);
+            Destroy(children[i].gameObject);
 #endif
         }
+
         tilePositions.Clear();
         spawned.Clear();
         rampBounds.Clear();
@@ -488,11 +498,12 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
     private void OnValidate()
     {
-        ApplyMapSizeSettings();
+        SanitizeSettings();
     }
 
     private void Start()
     {
-        if (generateOnStart) Generate();
+        if (generateOnStart)
+            Generate();
     }
 }
