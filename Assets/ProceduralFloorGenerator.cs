@@ -10,7 +10,7 @@ public class ProceduralFloorGenerator : MonoBehaviour
     public int cellSize = 100;
 
     [Header("Height map")]
-    public int levelsCount = 6;
+    [Min(1)] public int levelsCount = 6;
     public int heightStep = 50;
     public float noiseScale = 0.06f;
     public int seed = 0;
@@ -29,7 +29,7 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
     [Header("Placement controls")]
     public float[] lateralOffsets = new float[] { 0f, 0.25f, -0.25f, 0.5f, -0.5f };
-    public int maxHeightLevelsPerSegment = 2;
+    [Min(1)] public int maxHeightLevelsPerSegment = 2;
     public int maxPlacementAttempts = 5;
     [Tooltip("Do not remove base tile by default. Enable only if you need a clean ramp opening.")]
     public bool replaceTileWithRamp = false;
@@ -54,6 +54,7 @@ public class ProceduralFloorGenerator : MonoBehaviour
         if (seed == 0) seed = Random.Range(-1000000, 1000000);
         Random.InitState(seed);
 
+        int safeLevelsCount = Mathf.Max(1, levelsCount);
         levelMap = new int[width, depth];
         highMap = new bool[width, depth];
 
@@ -65,8 +66,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
             for (int z = 0; z < depth; z++)
             {
                 float n = SampleFractalPerlin(x + ox, z + oz);
-                int lvl = Mathf.FloorToInt(Mathf.Clamp01(n) * levelsCount);
-                if (lvl >= levelsCount) lvl = levelsCount - 1;
+                int lvl = Mathf.FloorToInt(Mathf.Clamp01(n) * safeLevelsCount);
+                if (lvl >= safeLevelsCount) lvl = safeLevelsCount - 1;
                 levelMap[x, z] = lvl;
                 highMap[x, z] = lvl > 0;
             }
@@ -79,7 +80,7 @@ public class ProceduralFloorGenerator : MonoBehaviour
                 if (tilePrefab != null)
                 {
                     GameObject t = Instantiate(tilePrefab, w, Quaternion.identity, transform);
-                    t.name = $"Tile [{x},{z}] L{levelMap[x,z]}";
+                    t.name = $"Tile [{x},{z}] L{levelMap[x, z]}";
                     spawned.Add(t);
                     tilePositions.Add(new Vector2Int(x, z));
                 }
@@ -124,6 +125,9 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
     void CreateRampsAroundIsland(List<Vector2Int> island)
     {
+        if (rampPrefab == null)
+            return;
+
         foreach (var cell in island)
         {
             int cx = cell.x, cz = cell.y;
@@ -159,7 +163,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
         if (levelDiff <= 0)
             return;
 
-        int segments = Mathf.CeilToInt((float)levelDiff / maxHeightLevelsPerSegment);
+        int maxLevelsPerSegment = Mathf.Max(1, maxHeightLevelsPerSegment);
+        int segments = Mathf.CeilToInt((float)levelDiff / maxLevelsPerSegment);
         segments = Mathf.Max(1, segments);
 
         int remaining = levelDiff;
@@ -236,7 +241,7 @@ public class ProceduralFloorGenerator : MonoBehaviour
                     if (!Application.isPlaying) DestroyImmediate(r);
                     else Destroy(r);
 #else
-                Destroy(r);
+                    Destroy(r);
 #endif
                 }
             }
