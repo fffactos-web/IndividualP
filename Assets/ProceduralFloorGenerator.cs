@@ -21,16 +21,16 @@ public class ProceduralFloorGenerator : MonoBehaviour
     public GameObject tilePrefab;
     public GameObject rampPrefab;
 
-    [Header("Ramp model unit sizes (локальные единицы модели)")]
-    public float rampModelLength = 1f; // локальная длина модели по +X
-    public float rampModelHeight = 1f; // локальная высота модели по +Y
-    public float rampModelWidth = 1f;  // локальная ширина по +Z
+    private Dictionary<Vector2Int, int> tileLevels = new Dictionary<Vector2Int, int>(); // ,   
+                    tileLevels[new Vector2Int(x, z)] = levelMap[x, z];
+    public float rampModelHeight = 1f; // Г«Г®ГЄГ Г«ГјГ­Г Гї ГўГ»Г±Г®ГІГ  Г¬Г®Г¤ГҐГ«ГЁ ГЇГ® +Y
+    public float rampModelWidth = 1f;  // Г«Г®ГЄГ Г«ГјГ­Г Гї ГёГЁГ°ГЁГ­Г  ГЇГ® +Z
 
     [Header("Placement controls")]
     public float[] lateralOffsets = new float[] { 0f, 0.25f, -0.25f, 0.5f, -0.5f };
     public int maxHeightLevelsPerSegment = 2;
     public int maxPlacementAttempts = 5;
-    [Tooltip("Не удалять плитку по умолчанию; включай, если уверен в порядке генерации")]
+    [Tooltip("ГЌГҐ ГіГ¤Г Г«ГїГІГј ГЇГ«ГЁГІГЄГі ГЇГ® ГіГ¬Г®Г«Г·Г Г­ГЁГѕ; ГўГЄГ«ГѕГ·Г Г©, ГҐГ±Г«ГЁ ГіГўГҐГ°ГҐГ­ Гў ГЇГ®Г°ГїГ¤ГЄГҐ ГЈГҐГ­ГҐГ°Г Г¶ГЁГЁ")]
     public bool replaceTileWithRamp = false;
 
     [Header("Options")]
@@ -40,8 +40,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
     private int[,] levelMap;
     private bool[,] highMap;
     private bool[,] visited;
-    private HashSet<Vector2Int> tilePositions = new HashSet<Vector2Int>(); // позиции, где есть плитки
-    private HashSet<string> edgeSet = new HashSet<string>(); // чтобы не дублировать ребра low->high
+    private HashSet<Vector2Int> tilePositions = new HashSet<Vector2Int>(); // ГЇГ®Г§ГЁГ¶ГЁГЁ, ГЈГ¤ГҐ ГҐГ±ГІГј ГЇГ«ГЁГІГЄГЁ
+    private HashSet<string> edgeSet = new HashSet<string>(); // Г·ГІГ®ГЎГ» Г­ГҐ Г¤ГіГЎГ«ГЁГ°Г®ГўГ ГІГј Г°ГҐГЎГ°Г  low->high
     private List<GameObject> spawned = new List<GameObject>();
     private List<Bounds> rampBounds = new List<Bounds>();
 
@@ -59,7 +59,7 @@ public class ProceduralFloorGenerator : MonoBehaviour
         float ox = Random.Range(0f, 9999f);
         float oz = Random.Range(0f, 9999f);
 
-        // 1) генерируем уровни
+        // 1) ГЈГҐГ­ГҐГ°ГЁГ°ГіГҐГ¬ ГіГ°Г®ГўГ­ГЁ
         for (int x = 0; x < width; x++)
             for (int z = 0; z < depth; z++)
             {
@@ -67,10 +67,10 @@ public class ProceduralFloorGenerator : MonoBehaviour
                 int lvl = Mathf.FloorToInt(Mathf.Clamp01(n) * levelsCount);
                 if (lvl >= levelsCount) lvl = levelsCount - 1;
                 levelMap[x, z] = lvl;
-                highMap[x, z] = lvl > 0; // любой уровень выше 0 считаем "высоким" для поиска островов
+                highMap[x, z] = lvl > 0; // Г«ГѕГЎГ®Г© ГіГ°Г®ГўГҐГ­Гј ГўГ»ГёГҐ 0 Г±Г·ГЁГІГ ГҐГ¬ "ГўГ»Г±Г®ГЄГЁГ¬" Г¤Г«Гї ГЇГ®ГЁГ±ГЄГ  Г®Г±ГІГ°Г®ГўГ®Гў
             }
 
-        // 2) ставим плитки и запоминаем их позиции
+        // 2) Г±ГІГ ГўГЁГ¬ ГЇГ«ГЁГІГЄГЁ ГЁ Г§Г ГЇГ®Г¬ГЁГ­Г ГҐГ¬ ГЁГµ ГЇГ®Г§ГЁГ¶ГЁГЁ
         for (int x = 0; x < width; x++)
             for (int z = 0; z < depth; z++)
             {
@@ -84,7 +84,7 @@ public class ProceduralFloorGenerator : MonoBehaviour
                 }
             }
 
-        // 3) найти острова (flood fill по highMap)
+        // 3) Г­Г Г©ГІГЁ Г®Г±ГІГ°Г®ГўГ  (flood fill ГЇГ® highMap)
         visited = new bool[width, depth];
         for (int x = 0; x < width; x++)
             for (int z = 0; z < depth; z++)
@@ -92,7 +92,7 @@ public class ProceduralFloorGenerator : MonoBehaviour
                 if (highMap[x, z] && !visited[x, z])
                 {
                     var island = FloodFill(x, z);
-                    // для каждого острова обрабатываем границы — ставим рампы на все стороны, где сосед ниже
+                    // Г¤Г«Гї ГЄГ Г¦Г¤Г®ГЈГ® Г®Г±ГІГ°Г®ГўГ  Г®ГЎГ°Г ГЎГ ГІГ»ГўГ ГҐГ¬ ГЈГ°Г Г­ГЁГ¶Г» вЂ” Г±ГІГ ГўГЁГ¬ Г°Г Г¬ГЇГ» Г­Г  ГўГ±ГҐ Г±ГІГ®Г°Г®Г­Г», ГЈГ¤ГҐ Г±Г®Г±ГҐГ¤ Г­ГЁГ¦ГҐ
                     CreateRampsAroundIsland(island);
                 }
             }
@@ -124,7 +124,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
     void CreateRampsAroundIsland(List<Vector2Int> island)
     {
-        // для ускорения — собрать set островных клеток
+                if (nl != 0) continue;  // only connect island borders to ground level
+        // Г¤Г«Гї ГіГ±ГЄГ®Г°ГҐГ­ГЁГї вЂ” Г±Г®ГЎГ°Г ГІГј set Г®Г±ГІГ°Г®ГўГ­Г»Гµ ГЄГ«ГҐГІГ®ГЄ
         HashSet<Vector2Int> islandSet = new HashSet<Vector2Int>(island);
 
         foreach (var cell in island)
@@ -138,15 +139,15 @@ public class ProceduralFloorGenerator : MonoBehaviour
                 if (!InBounds(nx, nz)) continue;
 
                 int nl = levelMap[nx, nz];
-                if (nl >= cl) continue; // нас интересуют только соседи ниже
+                if (nl >= cl) continue; // Г­Г Г± ГЁГ­ГІГҐГ°ГҐГ±ГіГѕГІ ГІГ®Г«ГјГЄГ® Г±Г®Г±ГҐГ¤ГЁ Г­ГЁГ¦ГҐ
 
-                // нормируем ребро как low->high ключ чтобы не дублировать
+                // Г­Г®Г°Г¬ГЁГ°ГіГҐГ¬ Г°ГҐГЎГ°Г® ГЄГ ГЄ low->high ГЄГ«ГѕГ· Г·ГІГ®ГЎГ» Г­ГҐ Г¤ГіГЎГ«ГЁГ°Г®ГўГ ГІГј
                 int lowX = nx, lowZ = nz, lowL = nl;
                 int highX = cx, highZ = cz, highL = cl;
                 string key = $"{lowX},{lowZ}->{highX},{highZ}";
-                if (edgeSet.Contains(key)) continue; // уже создали такую рампу
+                if (edgeSet.Contains(key)) continue; // ГіГ¦ГҐ Г±Г®Г§Г¤Г Г«ГЁ ГІГ ГЄГіГѕ Г°Г Г¬ГЇГі
 
-                // создаём путь рамп (возможно сегменты)
+                // Г±Г®Г§Г¤Г ВёГ¬ ГЇГіГІГј Г°Г Г¬ГЇ (ГўГ®Г§Г¬Г®Г¦Г­Г® Г±ГҐГЈГ¬ГҐГ­ГІГ»)
                 BuildRampPathFromLowToHigh(lowX, lowZ, lowL, highX, highZ, highL, d);
 
                 edgeSet.Add(key);
@@ -155,8 +156,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
     }
 
     /// <summary>
-    /// Построить рампу (возможно сегментированно) от низкой клетки (lowX,lowZ,lowL) к соседней высокой клетке (highX,highZ,highL).
-    /// dirGrid — направление из high->low (один из Neighbors4).
+    /// ГЏГ®Г±ГІГ°Г®ГЁГІГј Г°Г Г¬ГЇГі (ГўГ®Г§Г¬Г®Г¦Г­Г® Г±ГҐГЈГ¬ГҐГ­ГІГЁГ°Г®ГўГ Г­Г­Г®) Г®ГІ Г­ГЁГ§ГЄГ®Г© ГЄГ«ГҐГІГЄГЁ (lowX,lowZ,lowL) ГЄ Г±Г®Г±ГҐГ¤Г­ГҐГ© ГўГ»Г±Г®ГЄГ®Г© ГЄГ«ГҐГІГЄГҐ (highX,highZ,highL).
+    /// dirGrid вЂ” Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГҐ ГЁГ§ high->low (Г®Г¤ГЁГ­ ГЁГ§ Neighbors4).
     /// </summary>
     void BuildRampPathFromLowToHigh(int lowX, int lowZ, int lowL, int highX, int highZ, int highL, Vector2Int dirGrid)
     {
@@ -202,10 +203,10 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
                 Vector3 scale = new Vector3(scaleX, scaleY, scaleZ);
 
-                // проверка опоры под сегментом рампы
+                // ГЇГ°Г®ГўГҐГ°ГЄГ  Г®ГЇГ®Г°Г» ГЇГ®Г¤ Г±ГҐГЈГ¬ГҐГ­ГІГ®Г¬ Г°Г Г¬ГЇГ»
                 if (!HasSupportUnder(basePos, segLowLevel))
                 {
-                    continue; // без опоры не ставим
+                    continue; // ГЎГҐГ§ Г®ГЇГ®Г°Г» Г­ГҐ Г±ГІГ ГўГЁГ¬
                 }
 
                 var r = Instantiate(rampPrefab, basePos, rot, transform);
@@ -249,17 +250,17 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
             if (!placed)
             {
-                Debug.Log($"[SupportCheck] пропуск сегмента рампы для ребра {lowX},{lowZ} -> {highX},{highZ}");
+        if (tileLevels.TryGetValue(gridPos, out int tileLevel) && tileLevel == level)
             }
 
-            currentLowLevel += partLevels;
-            remaining -= partLevels;
+                tileLevels.Remove(new Vector2Int(tx, tz));
+        tileLevels.Clear();
         }
     }
 
     bool HasSupportUnder(Vector3 worldPos, int level)
     {
-        // проверка на плитку в позиции grid
+        // ГЇГ°Г®ГўГҐГ°ГЄГ  Г­Г  ГЇГ«ГЁГІГЄГі Гў ГЇГ®Г§ГЁГ¶ГЁГЁ grid
         Vector2Int gridPos = new Vector2Int(
             Mathf.RoundToInt(worldPos.x / cellSize),
             Mathf.RoundToInt(worldPos.z / cellSize)
@@ -268,10 +269,10 @@ public class ProceduralFloorGenerator : MonoBehaviour
         if (tilePositions.Contains(gridPos))
             return true;
 
-        // можно расширить, чтобы проверять рампы под этим сегментом
+        // Г¬Г®Г¦Г­Г® Г°Г Г±ГёГЁГ°ГЁГІГј, Г·ГІГ®ГЎГ» ГЇГ°Г®ГўГҐГ°ГїГІГј Г°Г Г¬ГЇГ» ГЇГ®Г¤ ГЅГІГЁГ¬ Г±ГҐГЈГ¬ГҐГ­ГІГ®Г¬
         foreach (var b in rampBounds)
         {
-            // если рампа ниже и покрывает эту точку по XY
+            // ГҐГ±Г«ГЁ Г°Г Г¬ГЇГ  Г­ГЁГ¦ГҐ ГЁ ГЇГ®ГЄГ°Г»ГўГ ГҐГІ ГЅГІГі ГІГ®Г·ГЄГі ГЇГ® XY
             if (b.min.x <= worldPos.x && b.max.x >= worldPos.x &&
                 b.min.z <= worldPos.z && b.max.z >= worldPos.z &&
                 b.max.y <= (level + 0.01f) * heightStep)
