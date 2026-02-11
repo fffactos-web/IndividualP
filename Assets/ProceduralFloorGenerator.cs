@@ -185,15 +185,30 @@ public class ProceduralFloorGenerator : MonoBehaviour
             int segHighLevel = currentLowLevel + partLevels;
 
             float targetVertical = partLevels * heightStep;
-            float targetHorizontal = cellSize;
+            float targetHorizontal = (float)cellSize / segments;
 
             bool placed = false;
 
             for (int attempt = 0; attempt < Mathf.Min(maxPlacementAttempts, lateralOffsets.Length); attempt++)
             {
                 float lateral = lateralOffsets[attempt];
-                Vector3 basePos = GridToWorld(lowX, lowZ, segLowLevel) + perp * (lateral * cellSize);
+                Vector3 basePos = GridToWorld(lowX, lowZ, segLowLevel) + dirWorld * (s * targetHorizontal) + perp * (lateral * cellSize);
                 basePos.y = segLowLevel * heightStep;
+
+                Vector3 startAnchor = basePos;
+                Vector3 endAnchor = basePos + dirWorld * targetHorizontal;
+                endAnchor.y = segHighLevel * heightStep;
+
+                if (!HasAnchorAt(startAnchor, segLowLevel))
+                {
+                    continue;
+                }
+
+                bool isFinalSegment = s == segments - 1;
+                if (isFinalSegment && !HasAnchorAt(endAnchor, segHighLevel))
+                {
+                    continue;
+                }
 
                 Quaternion rot = Quaternion.LookRotation(dirWorld, Vector3.up);
 
@@ -202,11 +217,6 @@ public class ProceduralFloorGenerator : MonoBehaviour
                 float scaleZ = cellSize / Mathf.Max(1e-5f, rampModelWidth);
 
                 Vector3 scale = new Vector3(scaleX, scaleY, scaleZ);
-
-                if (!HasSupportUnder(basePos, segLowLevel))
-                {
-                    continue;
-                }
 
                 var r = Instantiate(rampPrefab, basePos, rot, transform);
                 r.transform.localScale = scale;
@@ -284,21 +294,24 @@ public class ProceduralFloorGenerator : MonoBehaviour
         return normalization > 0f ? total / normalization : 0f;
     }
 
-    bool HasSupportUnder(Vector3 worldPos, int level)
+    bool HasAnchorAt(Vector3 worldPos, int expectedLevel)
     {
         Vector2Int gridPos = new Vector2Int(
             Mathf.RoundToInt(worldPos.x / cellSize),
             Mathf.RoundToInt(worldPos.z / cellSize)
         );
 
-        if (tilePositions.Contains(gridPos))
+        if (InBounds(gridPos.x, gridPos.y) && tilePositions.Contains(gridPos) && levelMap[gridPos.x, gridPos.y] == expectedLevel)
             return true;
+
+        float expectedY = expectedLevel * heightStep;
+        const float anchorToleranceY = 0.1f;
 
         foreach (var b in rampBounds)
         {
             if (b.min.x <= worldPos.x && b.max.x >= worldPos.x &&
                 b.min.z <= worldPos.z && b.max.z >= worldPos.z &&
-                b.max.y <= (level + 0.01f) * heightStep)
+                b.min.y - anchorToleranceY <= expectedY && b.max.y + anchorToleranceY >= expectedY)
             {
                 return true;
             }
