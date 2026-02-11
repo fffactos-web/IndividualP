@@ -9,6 +9,12 @@ public class ProceduralFloorGenerator : MonoBehaviour
     public int depth = 40;
     public int cellSize = 100;
 
+    [Header("Map Size")]
+    [Tooltip("If enabled, width/depth are recalculated from world size and cell size before generation.")]
+    public bool useWorldSize = false;
+    [Min(1)] public int mapSizeX = 4000;
+    [Min(1)] public int mapSizeZ = 4000;
+
     [Header("Height map")]
     [Min(1)] public int levelsCount = 6;
     public int heightStep = 50;
@@ -50,6 +56,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
     public void Generate()
     {
         ClearAll();
+
+        ApplyMapSizeSettings();
 
         if (seed == 0) seed = Random.Range(-1000000, 1000000);
         Random.InitState(seed);
@@ -199,13 +207,14 @@ public class ProceduralFloorGenerator : MonoBehaviour
                 Vector3 endAnchor = basePos + dirWorld * targetHorizontal;
                 endAnchor.y = segHighLevel * heightStep;
 
-                if (!HasAnchorAt(startAnchor, segLowLevel))
+                bool isFirstSegment = s == 0;
+                if (isFirstSegment && !HasTileAnchorAt(startAnchor, lowX, lowZ, segLowLevel))
                 {
                     continue;
                 }
 
                 bool isFinalSegment = s == segments - 1;
-                if (isFinalSegment && !HasAnchorAt(endAnchor, segHighLevel))
+                if (isFinalSegment && !HasTileAnchorAt(endAnchor, highX, highZ, segHighLevel))
                 {
                     continue;
                 }
@@ -294,30 +303,37 @@ public class ProceduralFloorGenerator : MonoBehaviour
         return normalization > 0f ? total / normalization : 0f;
     }
 
-    bool HasAnchorAt(Vector3 worldPos, int expectedLevel)
+    bool HasTileAnchorAt(Vector3 worldPos, int tileX, int tileZ, int expectedLevel)
     {
-        Vector2Int gridPos = new Vector2Int(
-            Mathf.RoundToInt(worldPos.x / cellSize),
-            Mathf.RoundToInt(worldPos.z / cellSize)
-        );
+        if (!InBounds(tileX, tileZ) || levelMap[tileX, tileZ] != expectedLevel)
+            return false;
 
-        if (InBounds(gridPos.x, gridPos.y) && tilePositions.Contains(gridPos) && levelMap[gridPos.x, gridPos.y] == expectedLevel)
-            return true;
+        Vector3 tileCenter = GridToWorld(tileX, tileZ, expectedLevel);
+        float halfCell = cellSize * 0.5f;
 
-        float expectedY = expectedLevel * heightStep;
+        bool insideTileXZ = Mathf.Abs(worldPos.x - tileCenter.x) <= halfCell &&
+                            Mathf.Abs(worldPos.z - tileCenter.z) <= halfCell;
+        if (!insideTileXZ)
+            return false;
+
         const float anchorToleranceY = 0.1f;
+        return Mathf.Abs(worldPos.y - tileCenter.y) <= anchorToleranceY;
+    }
 
-        foreach (var b in rampBounds)
-        {
-            if (b.min.x <= worldPos.x && b.max.x >= worldPos.x &&
-                b.min.z <= worldPos.z && b.max.z >= worldPos.z &&
-                b.min.y - anchorToleranceY <= expectedY && b.max.y + anchorToleranceY >= expectedY)
-            {
-                return true;
-            }
-        }
+    void ApplyMapSizeSettings()
+    {
+        width = Mathf.Max(1, width);
+        depth = Mathf.Max(1, depth);
+        cellSize = Mathf.Max(1, cellSize);
 
-        return false;
+        if (!useWorldSize)
+            return;
+
+        mapSizeX = Mathf.Max(1, mapSizeX);
+        mapSizeZ = Mathf.Max(1, mapSizeZ);
+
+        width = Mathf.Max(1, Mathf.RoundToInt((float)mapSizeX / cellSize));
+        depth = Mathf.Max(1, Mathf.RoundToInt((float)mapSizeZ / cellSize));
     }
 
     void RemoveTileAt(int tx, int tz)
@@ -390,6 +406,11 @@ public class ProceduralFloorGenerator : MonoBehaviour
         edgeSet.Clear();
         spawned.Clear();
         rampBounds.Clear();
+    }
+
+    private void OnValidate()
+    {
+        ApplyMapSizeSettings();
     }
 
     private void Start()
