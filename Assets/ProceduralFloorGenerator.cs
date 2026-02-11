@@ -59,6 +59,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
     {
         ClearAll();
 
+        ApplyMapSizeSettings();
+
         if (seed == 0) seed = Random.Range(-1000000, 1000000);
         Random.InitState(seed);
 
@@ -339,10 +341,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
     bool HasAnchorAt(Vector3 worldPos, int expectedLevel, List<Bounds> extraBounds)
     {
-        Vector2Int gridPos = new Vector2Int(
-            Mathf.RoundToInt(worldPos.x / cellSize),
-            Mathf.RoundToInt(worldPos.z / cellSize)
-        );
+        if (!InBounds(tileX, tileZ) || levelMap[tileX, tileZ] != expectedLevel)
+            return false;
 
         if (InBounds(gridPos.x, gridPos.y) && tilePositions.Contains(gridPos) && levelMap[gridPos.x, gridPos.y] == expectedLevel)
             return true;
@@ -462,6 +462,11 @@ public class ProceduralFloorGenerator : MonoBehaviour
         edgeSet.Clear();
         spawned.Clear();
         rampBounds.Clear();
+    }
+
+    private void OnValidate()
+    {
+        ApplyMapSizeSettings();
     }
 
     private void Start()
