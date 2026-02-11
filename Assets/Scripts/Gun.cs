@@ -14,6 +14,7 @@ public class Gun : MonoBehaviour
     public float critDmgMultiplier = 2f;
     public float armorPenetration;
     public float globalDamageMultiplier = 1f;
+    public float globalAttackSpeed = 1f;
     public float statusChance;
     public float statusDuration = 1f;
     public float procChance;
@@ -123,14 +124,12 @@ public class Gun : MonoBehaviour
     {
         StartCooldown();
 
-        PoolManager.I.shotEffectPool
-            .Spawn(firePoint.position, firePoint.rotation);
+        PoolManager.I.shotEffectPool.Spawn(firePoint.position, firePoint.rotation);
 
-        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(Camera.main, crosshair.position);
-        Ray ray = Camera.main.ScreenPointToRay(screenPoint);
+        Ray ray = Camera.main.ScreenPointToRay(crosshair.position);
 
         RaycastHit[] hits = Physics.RaycastAll(ray, 10000f * skillRangeMultiplier, hitMask, QueryTriggerInteraction.Ignore);
-        Vector3 endPoint = firePoint.position + ray.direction * 60f;
+        Vector3 endPoint = firePoint.position + ray.direction * 6000f;
 
         if (hits.Length > 0)
         {
@@ -153,13 +152,8 @@ public class Gun : MonoBehaviour
                     hd.rawDamage = currentDamage;
                     DealDamage(zombie, hd);
                 }
-                else
-                {
-                    endPoint = hit.point;
-                    break;
-                }
 
-                endPoint = hit.point;
+                //endPoint = hit.point;
                 currentDamage *= 0.8f;
                 if (currentDamage < 1f)
                     break;
@@ -175,9 +169,10 @@ public class Gun : MonoBehaviour
         Rocket rocket = PoolManager.I.rocketsPool.Spawn(firePoint.position, firePoint.rotation).GetComponent<Rocket>();
         rocket.dmg = dmg * globalDamageMultiplier;
         rocket.radius = radius * abilityHitboxSize;
+        rocket.SetOwner(owner, this);
     }
 
-    Zombie_Properies.HitData BuildHitData(bool isHeadshot)
+    public Zombie_Properies.HitData BuildHitData(bool isHeadshot)
     {
         float missingHealthBonus = 1f;
         if (owner != null)
@@ -198,12 +193,7 @@ public class Gun : MonoBehaviour
         {
             rawDamage = dmg * globalDamageMultiplier * missingHealthBonus,
             armorPenetration = armorPenetration,
-            critMultiplier = critMultiplier,
-            statusChance = statusChance,
-            statusDuration = statusDuration,
-            procChance = procChance,
-            procPower = procPower,
-            procCount = procCount
+            critMultiplier = critMultiplier
         };
     }
 
@@ -249,8 +239,6 @@ public class Gun : MonoBehaviour
         cooldownTween?.Kill();
 
         visualCooldown.value = 0f;
-        cooldownTween = visualCooldown
-            .DOValue(1f, CooldownDuration * cdOffset)
-            .SetEase(Ease.Linear);
+        cooldownTween = visualCooldown.DOValue(1f, CooldownDuration * cdOffset / globalAttackSpeed).SetEase(Ease.Linear);
     }
 }

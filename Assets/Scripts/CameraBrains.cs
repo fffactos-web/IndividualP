@@ -27,7 +27,6 @@ public class CameraBrains : MonoBehaviour
         cam = GetComponent<CinemachineVirtualCamera>();
         character = GameObject.FindGameObjectWithTag("Character");
         gunHolder = GameObject.FindGameObjectWithTag("Camera Gun");
-        gunHolder.SetActive(false);
         movement = GameObject.FindGameObjectWithTag("Player").GetComponent<Movement>();
         rect = GameObject.FindGameObjectWithTag("Crosshair").GetComponent<RectTransform>();
         animator = character.GetComponent<Animator>();

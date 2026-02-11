@@ -1,5 +1,6 @@
 using DG.Tweening;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -16,6 +17,7 @@ public class Character_Properties : MonoBehaviour
         public float critDamageMultiplier = 2f;
         public float armorPenetration = 0f;
         public float globalDamageMultiplier = 1f;
+        public float globalAttackSpeedMultiplier = 1f;
         public float damageVsStatusTargets = 0f;
         public float missingHealthDamage = 0f;
         public float lowHealthPower = 0f;
@@ -71,15 +73,17 @@ public class Character_Properties : MonoBehaviour
     }
 
     [Header("References")]
+    [SerializeField] SO_MetaReferences metaReferences;
     [SerializeField] GameObject[] dieEffect;
     [SerializeField] GameObject[] guns;
     [SerializeField] DiePanel diePanel;
     [SerializeField] UnityEngine.UI.Slider[] healthBars;
     [SerializeField] UnityEngine.UI.Slider[] healthBarForeground;
     [SerializeField] UnityEngine.UI.Slider expirienceBar;
-    [SerializeField] Transform gunHolder;
+     Transform gunHolder;
     [SerializeField] Transform camGunHolder;
     [SerializeField] Shop shop;
+    [SerializeField] HeroStats[] statsPresets;
 
     [Header("Stats")]
     [SerializeField] HeroStats baseStats = new HeroStats();
@@ -122,6 +126,7 @@ public class Character_Properties : MonoBehaviour
             critDamageMultiplier = 0f,
             armorPenetration = 0f,
             globalDamageMultiplier = 0f,
+            globalAttackSpeedMultiplier = 0f,
             maxHealth = 0f,
             healthRegen = 0f,
             shield = 0f,
@@ -158,14 +163,42 @@ public class Character_Properties : MonoBehaviour
             itemSlotLimit = 0
         };
     }
+    private IEnumerator Start()
+    {
+        while (gunHolder == null || camGunHolder == null)
+        {
+            if (gunHolder == null)
+            {
+                var obj = GameObject.FindGameObjectWithTag("Gunn");
+                if (obj != null)
+                    gunHolder = obj.transform;
+            }
+
+            if (camGunHolder == null)
+            {
+                var objo = GameObject.FindGameObjectWithTag("Camera Gun");
+                if (objo != null)
+                    camGunHolder = objo.transform;
+            }
+
+            yield return null;
+        }
+
+        Instantiate(guns[metaReferences.characterID], gunHolder);
+        Instantiate(guns[metaReferences.characterID], camGunHolder);
+        camGunHolder.gameObject.SetActive(false);
+
+
+        baseStats = statsPresets[metaReferences.characterID];
+
+        ChangeGunProperties();
+    }
 
     private void Awake()
     {
-        Instantiate(guns[0], camGunHolder);
-        Instantiate(guns[0], gunHolder);
+        baseStats = statsPresets[metaReferences.characterID];
 
         ResetProperties();
-        ChangeGunProperties();
 
         diePanel.gameObject.SetActive(false);
         gemStatus = GameObject.FindGameObjectWithTag("Gem Status").GetComponent<TextMeshProUGUI>();
@@ -208,6 +241,7 @@ public class Character_Properties : MonoBehaviour
         {
             damage = baseStats.damage + bonusStats.damage,
             attackSpeed = Mathf.Max(0.05f, baseStats.attackSpeed + bonusStats.attackSpeed),
+            globalAttackSpeedMultiplier = Mathf.Max(0f, baseStats.globalAttackSpeedMultiplier + bonusStats.globalAttackSpeedMultiplier),
             critChance = Mathf.Clamp01(baseStats.critChance + bonusStats.critChance),
             critDamageMultiplier = Mathf.Max(1f, baseStats.critDamageMultiplier + bonusStats.critDamageMultiplier),
             armorPenetration = Mathf.Max(0f, baseStats.armorPenetration + bonusStats.armorPenetration),
@@ -343,6 +377,7 @@ public class Character_Properties : MonoBehaviour
         foreach (var modifier in item.StatModifiers)
             ApplyModifier(modifier);
 
+        GetComponent<Movement>().ResetProperties();
         ChangeGunProperties();
         UpdateHealthBars();
         return true;
@@ -382,6 +417,9 @@ public class Character_Properties : MonoBehaviour
                 break;
             case HeroStatType.ArmorPenetration:
                 bonusStats.armorPenetration += modifier.value;
+                break;
+            case HeroStatType.GlobalAttackSpeed:
+                bonusStats.globalAttackSpeedMultiplier += modifier.value;
                 break;
             case HeroStatType.GlobalDamageMultiplier:
                 bonusStats.globalDamageMultiplier += modifier.value;
@@ -514,6 +552,7 @@ public class Character_Properties : MonoBehaviour
         gun.critDmgMultiplier = s.critDamageMultiplier;
         gun.armorPenetration = s.armorPenetration;
         gun.globalDamageMultiplier = s.globalDamageMultiplier;
+        gun.globalAttackSpeed = s.globalAttackSpeedMultiplier;
         gun.statusChance = s.statusChance;
         gun.statusDuration = s.statusDuration;
         gun.procChance = s.procChance;

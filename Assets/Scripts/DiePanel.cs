@@ -23,6 +23,8 @@ public class DiePanel : MonoBehaviour
 
     public void ExitToMenu()
     {
+        Time.timeScale = 1f;
+        UnityEngine.Cursor.lockState = CursorLockMode.None;
         SceneManager.LoadScene(0);
     }
 

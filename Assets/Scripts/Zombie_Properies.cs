@@ -9,11 +9,6 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         public float rawDamage;
         public float armorPenetration;
         public float critMultiplier;
-        public float statusChance;
-        public float statusDuration;
-        public float procChance;
-        public float procPower;
-        public int procCount;
     }
 
     [Header("Health")]
@@ -96,7 +91,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     public void GetDamage(float damage)
     {
-        TakeHit(new HitData { rawDamage = damage, critMultiplier = 1f, procCount = 1, procPower = 1f });
+        TakeHit(new HitData { rawDamage = damage, critMultiplier = 1f});
     }
 
     public float TakeHit(HitData hitData)
@@ -108,23 +103,9 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         if (hasStatus && character != null)
             damageAfterMitigation *= 1f + character.GetStats().damageVsStatusTargets;
 
-        if (hitData.procCount > 0 && hitData.procChance > 0f)
-        {
-            for (int i = 0; i < hitData.procCount; i++)
-            {
-                if (Random.value <= hitData.procChance)
-                    damageAfterMitigation += hitData.rawDamage * Mathf.Max(0f, hitData.procPower - 1f);
-            }
-        }
 
         currentHealth -= damageAfterMitigation;
         ShowDamage(damageAfterMitigation);
-
-        if (Random.value <= hitData.statusChance)
-        {
-            hasStatus = true;
-            statusTimer = Mathf.Max(statusTimer, hitData.statusDuration);
-        }
 
         if (currentHealth <= 0)
             Die();

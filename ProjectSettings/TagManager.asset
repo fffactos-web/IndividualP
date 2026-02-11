@@ -7,7 +7,6 @@ TagManager:
   - Terrain
   - Character
   - Controller
-  - Gun
   - Camera Gun
   - Crosshair
   - Camera Brain
@@ -20,6 +19,8 @@ TagManager:
   - Kills Status
   - Item Panel
   - Shop
+  - Gunn
+  - Gun
   layers:
   - Default
   - TransparentFX
@@ -30,7 +31,7 @@ TagManager:
   - Character
   - Enemy
   - Rocket
-  - 
+  - Terrain
   - 
   - 
   - 

@@ -147,9 +147,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef62ef2f8f20a3743bc8696d67eb340b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minAmmount: 3
-  maxAmmount: 5
-  dieEffect: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
+  spawnRadius: 2.5
+  maxAttemptsPerMob: 8
+  raycastHeight: 50
+  raycastDistance: 200
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  navMeshSampleDistance: 25
+  verticalOffset: 0.1
 --- !u!1 &1244467346748216234
 GameObject:
   m_ObjectHideFlags: 0
@@ -269,9 +275,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef62ef2f8f20a3743bc8696d67eb340b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minAmmount: 3
-  maxAmmount: 5
-  dieEffect: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
+  spawnRadius: 2.5
+  maxAttemptsPerMob: 8
+  raycastHeight: 50
+  raycastDistance: 200
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  navMeshSampleDistance: 25
+  verticalOffset: 0.1
 --- !u!1 &2009029359976631400
 GameObject:
   m_ObjectHideFlags: 0
@@ -493,9 +505,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef62ef2f8f20a3743bc8696d67eb340b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minAmmount: 3
-  maxAmmount: 5
-  dieEffect: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
+  spawnRadius: 2.5
+  maxAttemptsPerMob: 8
+  raycastHeight: 50
+  raycastDistance: 200
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  navMeshSampleDistance: 25
+  verticalOffset: 0.1
 --- !u!1 &3406020181526906806
 GameObject:
   m_ObjectHideFlags: 0
@@ -672,19 +690,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: baa43bcb2ced89d4996dd47d870aba74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  walkSpeed: 5
-  runBoost: 2
-  jumpForce: 300
-  currentStamina: 0
-  staminaRegenTimer: 0
   inAir: 0
   isRunning: 0
   isFiring: 0
   onTop: 0
-  camera: {fileID: 0}
-  rb: {fileID: 0}
   feetPos: {fileID: 6707171753343138537}
   animatorSpeed: 0
+  characterStats: {fileID: 0}
+  baseWalkSpeed: 0
   maxStamina: 100
   staminaDrainPerSecond: 25
   staminaRegenPerSecond: 20
@@ -707,20 +720,103 @@ MonoBehaviour:
   guns:
   - {fileID: 3092192352521507109, guid: 47c5e5a1ae4d0ff46a30dd20cabc9f0c, type: 3}
   - {fileID: 3294865303491351385, guid: 2c376361cf6989c49b9a1b51bf39fc64, type: 3}
+  diePanel: {fileID: 0}
   healthBars:
   - {fileID: 0}
   - {fileID: 4085835191384493770}
   healthBarForeground:
   - {fileID: 0}
   - {fileID: 4284787797227131533}
-  maxHealth: 100
-  dmg: 5
-  dmgMultiplier: 1
-  attackSpeedMultiplier: 20
-  critDmgMultiplier: 2
-  maxHealthMultiplier: 5
-  speedMultiplier: 1
-  runSpeedMultiplier: 2
+  expirienceBar: {fileID: 0}
+  camGunHolder: {fileID: 0}
+  shop: {fileID: 0}
+  baseStats:
+    damage: 4
+    attackSpeed: 1
+    critChance: 0.1
+    critDamageMultiplier: 2
+    armorPenetration: 0
+    globalDamageMultiplier: 1
+    damageVsStatusTargets: 0
+    missingHealthDamage: 0
+    lowHealthPower: 0
+    maxHealth: 100
+    healthRegen: 0
+    shield: 0
+    maxShield: 0
+    armor: 0
+    resistance: 0
+    lifesteal: 0
+    moveSpeed: 1
+    runSpeed: 1
+    jumpCount: 1
+    airControl: 0.35
+    globalAcceleration: 1
+    cooldownReduction: 0
+    castSpeed: 1
+    skillResource: 100
+    maxSkillResource: 100
+    resourceRegen: 10
+    procChance: 0
+    procPower: 1
+    procCount: 1
+    statusChance: 0
+    statusDuration: 1
+    killBonus: 0
+    killStreakBonus: 0
+    onHitTakenEffectPower: 0
+    statExchange: 0
+    luck: 0
+    attackRadius: 1
+    skillRange: 1
+    abilityHitboxSize: 1
+    itemSlotLimit: 6
+  bonusStats:
+    damage: 0
+    attackSpeed: 0
+    critChance: 0
+    critDamageMultiplier: 0
+    armorPenetration: 0
+    globalDamageMultiplier: 0
+    damageVsStatusTargets: 0
+    missingHealthDamage: 0
+    lowHealthPower: 0
+    maxHealth: 0
+    healthRegen: 0
+    shield: 0
+    maxShield: 0
+    armor: 0
+    resistance: 0
+    lifesteal: 0
+    moveSpeed: 0
+    runSpeed: 0
+    jumpCount: 0
+    airControl: 0
+    globalAcceleration: 0
+    cooldownReduction: 0
+    castSpeed: 0
+    skillResource: 0
+    maxSkillResource: 0
+    resourceRegen: 0
+    procChance: 0
+    procPower: 0
+    procCount: 0
+    statusChance: 0
+    statusDuration: 0
+    killBonus: 0
+    killStreakBonus: 0
+    onHitTakenEffectPower: 0
+    statExchange: 0
+    luck: 0
+    attackRadius: 0
+    skillRange: 0
+    abilityHitboxSize: 0
+    itemSlotLimit: 0
+  startExperienceForNextLevel: 20
+  experienceGrowthMultiplier: 1.25
+  difficulty: 1
+  kills: 0
+  gems: 0
 --- !u!1 &3520656257111965750
 GameObject:
   m_ObjectHideFlags: 0
@@ -765,9 +861,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef62ef2f8f20a3743bc8696d67eb340b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minAmmount: 3
-  maxAmmount: 5
-  dieEffect: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
+  spawnRadius: 2.5
+  maxAttemptsPerMob: 8
+  raycastHeight: 50
+  raycastDistance: 200
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  navMeshSampleDistance: 25
+  verticalOffset: 0.1
 --- !u!1 &4407158237352652076
 GameObject:
   m_ObjectHideFlags: 0
@@ -812,9 +914,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef62ef2f8f20a3743bc8696d67eb340b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minAmmount: 3
-  maxAmmount: 5
-  dieEffect: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
+  spawnRadius: 2.5
+  maxAttemptsPerMob: 8
+  raycastHeight: 50
+  raycastDistance: 200
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  navMeshSampleDistance: 25
+  verticalOffset: 0.1
 --- !u!1 &4512455616894725639
 GameObject:
   m_ObjectHideFlags: 0
@@ -859,9 +967,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef62ef2f8f20a3743bc8696d67eb340b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minAmmount: 3
-  maxAmmount: 5
-  dieEffect: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
+  spawnRadius: 2.5
+  maxAttemptsPerMob: 8
+  raycastHeight: 50
+  raycastDistance: 200
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  navMeshSampleDistance: 25
+  verticalOffset: 0.1
 --- !u!1 &4671731530768237374
 GameObject:
   m_ObjectHideFlags: 0
@@ -1121,9 +1235,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef62ef2f8f20a3743bc8696d67eb340b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minAmmount: 3
-  maxAmmount: 5
-  dieEffect: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
+  spawnRadius: 2.5
+  maxAttemptsPerMob: 8
+  raycastHeight: 50
+  raycastDistance: 200
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  navMeshSampleDistance: 25
+  verticalOffset: 0.1
 --- !u!1 &6903764817247569569
 GameObject:
   m_ObjectHideFlags: 0
@@ -1400,8 +1520,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c205f45b9f09dd47bc55a0959acbb12, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  waveInterval: 15
+  bigWaveEvery: 5
+  difficultyInterval: 30
+  zombieTypes: []
   mobSpawners: []
-  maxFollowers: 50
 --- !u!1 &8532568565673614631
 GameObject:
   m_ObjectHideFlags: 0
@@ -1521,9 +1644,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef62ef2f8f20a3743bc8696d67eb340b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minAmmount: 3
-  maxAmmount: 5
-  dieEffect: {fileID: 8846399945336154008, guid: 73f1ebf597b0b314a92cc0c67881cbfc, type: 3}
+  spawnRadius: 2.5
+  maxAttemptsPerMob: 8
+  raycastHeight: 50
+  raycastDistance: 200
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  navMeshSampleDistance: 25
+  verticalOffset: 0.1
 --- !u!1 &8660659546047669600
 GameObject:
   m_ObjectHideFlags: 0
@@ -1642,7 +1771,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3986165465374485164}
-  - {fileID: 8366585822688472647}
+  - {fileID: 4324887017023237720}
   m_Father: {fileID: 8674806761741915816}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
 --- !u!1001 &312339696787203601
@@ -1708,6 +1837,10 @@ PrefabInstance:
     - target: {fileID: 992228393613167026, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
       propertyPath: m_Layer
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1214801451066171174, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1260539803002489797, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1820,6 +1953,10 @@ PrefabInstance:
     - target: {fileID: 2509100594498673352, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 1.6373211
+      objectReference: {fileID: 0}
+    - target: {fileID: 2510845927066663334, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
+      propertyPath: m_PolyMesh.m_Mesh
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 2643394704912113972, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -2282,8 +2419,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
---- !u!4 &8366585822688472647 stripped
+--- !u!4 &4324887017023237720 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 8091194154512238678, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
+  m_CorrespondingSourceObject: {fileID: 4057939661356484681, guid: 08ee4dfc4612ea047b69dc5e95ecabab, type: 3}
   m_PrefabInstance: {fileID: 312339696787203601}
   m_PrefabAsset: {fileID: 0}

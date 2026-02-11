@@ -18,10 +18,12 @@ public class Rocket : MonoBehaviour, IPoolable
     bool canExplode;
 
     Character_Properties owner;
+    Gun gun;
 
-    public void SetOwner(Character_Properties character)
+    public void SetOwner(Character_Properties character, Gun gunn)
     {
         owner = character;
+        gun = gunn;
     }
 
     private void Awake()
@@ -71,12 +73,16 @@ public class Rocket : MonoBehaviour, IPoolable
 
     void Explode()
     {
-        PoolManager.I.explosionPool
-            .Spawn(transform.position, transform.rotation);
+        PoolManager.I.explosionPool.Spawn(transform.position, transform.rotation);
 
         foreach (var col in Physics.OverlapSphere(transform.position, radius))
         {
-            col.GetComponent<Zombie_Properies>()?.GetDamage(dmg);
+            if(col.GetComponent<Zombie_Properies>() != null)
+            {
+                Zombie_Properies zombie = col.GetComponent<Zombie_Properies>();
+                Zombie_Properies.HitData asd = gun.BuildHitData(false);
+                zombie.TakeHit(asd);
+            }
         }
 
         PoolManager.I.rocketsPool.Despawn(gameObject);

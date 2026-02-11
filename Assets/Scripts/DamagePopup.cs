@@ -25,6 +25,8 @@ public class DamagePopup : MonoBehaviour, IPoolable
     Tween fadeTween;
     Tween punchTween;
 
+    public bool isCrit;
+
     static Camera cachedCamera;
 
     // ===== UNITY =====

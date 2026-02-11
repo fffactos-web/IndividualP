@@ -45,12 +45,10 @@ public class ShopItem : MonoBehaviour
 
     public void Choose()
     {
-        GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>().ApplyItem(item);
+        Character_Properties c = GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>();
+        c.ApplyItem(item);
 
-        if (Character_StatusBar.I.inventory.TryGetValue(item, out int count))
-            Character_StatusBar.I.inventory[item] = count+1;
-        else
-            Character_StatusBar.I.inventory.Add(item, 1);
+        Character_StatusBar.I.AddItem(item);
 
         Time.timeScale = 1f;
         UnityEngine.Cursor.lockState = CursorLockMode.Locked; 

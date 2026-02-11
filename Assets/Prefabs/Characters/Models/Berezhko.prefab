@@ -5774,7 +5774,7 @@ GameObject:
   - component: {fileID: 4959835325714690475}
   m_Layer: 3
   m_Name: Gun
-  m_TagString: Gun
+  m_TagString: Gunn
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -10082,7 +10082,7 @@ Transform:
   - {fileID: 7725360376134328691}
   - {fileID: 1279620544906626322}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!95 &8065142567980834579
 Animator:
   serializedVersion: 5

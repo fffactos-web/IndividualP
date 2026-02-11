@@ -51,6 +51,7 @@ public enum HeroStatType
     CritDamageMultiplier,
     ArmorPenetration,
     GlobalDamageMultiplier,
+    GlobalAttackSpeed,
     DamageVsStatusTargets,
     MissingHealthDamage,
     LowHealthPower,

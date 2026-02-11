@@ -218,14 +218,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fireRate: 15
   dmg: 15
-  dmgMultiplier: 1
+  gunAttackSpeedMultiplier: 0.05
+  gunDamageMultiplier: 3
   attackSpeedMultiplier: 1
+  critChance: 0.1
   critDmgMultiplier: 2
+  armorPenetration: 0
+  globalDamageMultiplier: 1
+  statusChance: 0
+  statusDuration: 1
+  procChance: 0
+  procPower: 1
+  procCount: 1
+  radius: 5
+  skillRangeMultiplier: 1
+  abilityHitboxSize: 1
+  cooldownReduction: 0
+  castSpeedMultiplier: 1
   isPiercing: 1
   firePoint: {fileID: 5708715392224516615}
   cdOffset: 1
   pierceLine: {fileID: 0}
   pierceVisualTime: 5
+  hitMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   modifiers: 1
 --- !u!1 &4285897029371037087
 GameObject:

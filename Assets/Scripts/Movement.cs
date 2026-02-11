@@ -5,7 +5,7 @@ public class Movement : MonoBehaviour
     private float currentStamina;
     private float staminaRegenTimer;
     private float runBoost;
-    private float jumpForce = 75f;
+    private float jumpForce = 75*4f;
     public bool inAir;
     public bool isRunning;
     public bool isFiring;

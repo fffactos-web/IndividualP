@@ -8,13 +8,16 @@ public class PoolManager : MonoBehaviour
     public ObjectPool deathEffectPool;
     public ObjectPool shotEffectPool;
     public ObjectPool popupPool;
-    public ObjectPool pierceShotPool; 
+    public ObjectPool pierceShotPool;
     public ObjectPool rocketsPool;
     public ObjectPool explosionPool;
     public ObjectPool gemPool;
     public ObjectPool expiriencePool;
 
-    void Awake()
+    [Header("Serialized Fields for other scripts")]
+    [SerializeField] public Transform camGunHolder;
+
+    void Start()
     {
         if (I == null) I = this;
         else Destroy(gameObject);
