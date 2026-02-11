@@ -350,10 +350,17 @@ public class Character_Properties : MonoBehaviour
 
     public void ChangeGun(int id)
     {
-        Destroy(gunHolder.GetChild(0).gameObject);
+        if (id < 0 || id >= guns.Length)
+            return;
+
+        if (gunHolder != null && gunHolder.childCount > 0)
+            Destroy(gunHolder.GetChild(0).gameObject);
+
         Instantiate(guns[id], gunHolder);
 
-        Destroy(camGunHolder.GetChild(0).gameObject);
+        if (camGunHolder != null && camGunHolder.childCount > 0)
+            Destroy(camGunHolder.GetChild(0).gameObject);
+
         Instantiate(guns[id], camGunHolder);
 
         ChangeGunProperties();
@@ -367,10 +374,10 @@ public class Character_Properties : MonoBehaviour
 
     public bool ApplyItem(HeroItemDefinition item)
     {
-        item.OnEquip();
-
         if (item == null)
             return false;
+
+        item.OnEquip();
 
         equippedItems.Add(item);
 
