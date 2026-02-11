@@ -140,7 +140,8 @@ public class ProceduralFloorGenerator : MonoBehaviour
 
                 int nl = levelMap[nx, nz];
                 if (nl >= cl) continue;
-                if (nl != 0) continue;  // only connect island borders to ground level
+                // Connect every descending border (not only to ground level)
+                // so ramps can chain between all height levels.
 
                 int lowX = nx, lowZ = nz, lowL = nl;
                 int highX = cx, highZ = cz, highL = cl;
@@ -383,4 +384,3 @@ public class ProceduralFloorGenerator : MonoBehaviour
         if (generateOnStart) Generate();
     }
 }
-
