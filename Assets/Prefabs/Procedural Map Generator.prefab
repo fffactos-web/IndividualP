@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &327557502835349982
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 878010641620921981}
+  - component: {fileID: 846666562371060544}
+  m_Layer: 0
+  m_Name: Procedural Map Generator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &878010641620921981
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 327557502835349982}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 4.4858317, y: 1.7791698, z: 0.7813102}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &846666562371060544
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 327557502835349982}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 861ba90b9e9b8ff479b3853267b4b008, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pathCell: {fileID: 3383823248395907098, guid: 18e43a9c4091c8a43891d89d8b4c474d, type: 3}
+  rampCell: {fileID: 3061740445772083268, guid: a0f6f9225b8ca994d910639d7421250d, type: 3}
+  parentOfPath: {fileID: 327557502835349982}
+  cellPosOffset: 1
+  maxX: 20
+  maxY: 20
+  chanceToGetUp: 0.1
+  heightStep: 1
+  withGPTChanges: 1

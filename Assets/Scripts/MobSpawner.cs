@@ -7,7 +7,7 @@ public class MobSpawner : MonoBehaviour
     [SerializeField] float spawnRadius = 2.5f;
     [SerializeField] int maxAttemptsPerMob = 8;
     [SerializeField] float raycastHeight = 50f;
-    [SerializeField] float raycastDistance = 200f;
+    [SerializeField] float raycastDistance = 2000000f;
     [SerializeField] LayerMask groundMask = ~0;
     [SerializeField] float navMeshSampleDistance = 25f;
     [SerializeField] float verticalOffset = 0.1f;
