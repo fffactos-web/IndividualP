@@ -9,6 +9,7 @@ public class BackBoard : MonoBehaviour
     [SerializeField]TextMeshProUGUI exercise;
     int level = 1;
     int ans;
+    bool answerLocked;
     Canvas canvas;
 
     Shop shop;
@@ -28,6 +29,8 @@ public class BackBoard : MonoBehaviour
 
     public void StartChallange()
     {
+        answerLocked = false;
+
         switch (level)
         {
             case 1:
@@ -87,6 +90,11 @@ public class BackBoard : MonoBehaviour
 
     public void CheckAnswer(Button button)
     {
+        if (answerLocked)
+            return;
+
+        answerLocked = true;
+
         Debug.Log("Answer checked");
         if (button.GetComponentInChildren<TextMeshProUGUI>().text == ans.ToString())
         {
@@ -134,4 +142,5 @@ public class BackBoard : MonoBehaviour
             Destroy(gameObject);
         }
     }
+
 }
