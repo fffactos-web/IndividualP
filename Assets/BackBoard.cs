@@ -16,7 +16,6 @@ public class BackBoard : MonoBehaviour
     Shop shop;
 
     readonly List<RaycastResult> uiRaycastResults = new List<RaycastResult>();
-    int lastAnswerFrame = -1;
 
     private void Start()
     {
