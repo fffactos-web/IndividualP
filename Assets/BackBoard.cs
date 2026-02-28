@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class BackBoard : MonoBehaviour
@@ -14,6 +15,9 @@ public class BackBoard : MonoBehaviour
 
     Shop shop;
 
+    readonly List<RaycastResult> uiRaycastResults = new List<RaycastResult>();
+    int lastAnswerFrame = -1;
+
     private void Start()
     {
         shop = GameObject.FindGameObjectWithTag("Shop").GetComponent<Shop>();
@@ -25,6 +29,12 @@ public class BackBoard : MonoBehaviour
             Button btn = answers[i];
             btn.onClick.AddListener(() => CheckAnswer(btn));
         }
+    }
+
+    void Update()
+    {
+        if (Input.GetMouseButtonDown(0))
+            TryClickCenterButton();
     }
 
     public void StartChallange()
@@ -54,6 +64,7 @@ public class BackBoard : MonoBehaviour
             case 4:
                 int f = Random.Range(11, 30);
                 int g = (int)System.Math.Pow(f, 2);
+                ans = f + g;
                 exercise.text = f + " + " + f + "^2" + " =";
                 break;
             case 5:
@@ -91,6 +102,11 @@ public class BackBoard : MonoBehaviour
 
     public void CheckAnswer(Button button)
     {
+        if (lastAnswerFrame == Time.frameCount)
+            return;
+
+        lastAnswerFrame = Time.frameCount;
+
         if (answerLocked)
             return;
 
@@ -149,5 +165,29 @@ public class BackBoard : MonoBehaviour
     {
         for (int i = 0; i < answers.Length; i++)
             answers[i].interactable = isInteractable;
+    }
+
+    void TryClickCenterButton()
+    {
+        if (EventSystem.current == null)
+            return;
+
+        PointerEventData pointerData = new PointerEventData(EventSystem.current)
+        {
+            position = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f)
+        };
+
+        uiRaycastResults.Clear();
+        EventSystem.current.RaycastAll(pointerData, uiRaycastResults);
+
+        for (int i = 0; i < uiRaycastResults.Count; i++)
+        {
+            Button btn = uiRaycastResults[i].gameObject.GetComponentInParent<Button>();
+            if (btn != null && btn.interactable)
+            {
+                btn.onClick.Invoke();
+                return;
+            }
+        }
     }
 }
