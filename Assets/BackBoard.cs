@@ -101,6 +101,11 @@ public class BackBoard : MonoBehaviour
 
     public void CheckAnswer(Button button)
     {
+        if (lastAnswerFrame == Time.frameCount)
+            return;
+
+        lastAnswerFrame = Time.frameCount;
+
         if (answerLocked)
             return;
 
