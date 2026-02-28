@@ -30,6 +30,7 @@ public class BackBoard : MonoBehaviour
     public void StartChallange()
     {
         answerLocked = false;
+        SetAnswersInteractable(true);
 
         switch (level)
         {
@@ -94,6 +95,7 @@ public class BackBoard : MonoBehaviour
             return;
 
         answerLocked = true;
+        SetAnswersInteractable(false);
 
         Debug.Log("Answer checked");
         if (button.GetComponentInChildren<TextMeshProUGUI>().text == ans.ToString())
@@ -143,4 +145,9 @@ public class BackBoard : MonoBehaviour
         }
     }
 
+    void SetAnswersInteractable(bool isInteractable)
+    {
+        for (int i = 0; i < answers.Length; i++)
+            answers[i].interactable = isInteractable;
+    }
 }
