@@ -1,192 +1,219 @@
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class BackBoard : MonoBehaviour
 {
-    [SerializeField]Button[] answers;
-    [SerializeField]TextMeshProUGUI exercise;
-    int level = 1;
-    int ans;
-    bool answerLocked;
-    Canvas canvas;
+    private const int MaxLevel = 6;
 
-    Shop shop;
+    [SerializeField] private Button[] answers;
+    [SerializeField] private TextMeshProUGUI exercise;
 
-    readonly List<RaycastResult> uiRaycastResults = new List<RaycastResult>();
+    private int level = 1;
+    private int correctAnswer;
+    private bool answerLocked;
 
-    private void Start()
+    private Character_Properties playerProperties;
+    private UnityAction[] answerHandlers;
+
+    private void Awake()
     {
-        shop = GameObject.FindGameObjectWithTag("Shop").GetComponent<Shop>();
-        canvas = GetComponent<Canvas>();
-        canvas.worldCamera = Camera.main;
-        StartChallange();
+        Canvas canvas = GetComponent<Canvas>();
+        if (canvas != null)
+            canvas.worldCamera = Camera.main;
+
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+            playerProperties = player.GetComponent<Character_Properties>();
+    }
+
+    private void OnEnable()
+    {
+        answerHandlers = new UnityAction[answers.Length];
+
         for (int i = 0; i < answers.Length; i++)
         {
-            Button btn = answers[i];
-            btn.onClick.AddListener(() => CheckAnswer(btn));
+            Button button = answers[i];
+            UnityAction handler = () => OnAnswerClicked(button);
+            answerHandlers[i] = handler;
+            button.onClick.AddListener(handler);
+        }
+
+        StartChallenge();
+    }
+
+    private void OnDisable()
+    {
+        if (answerHandlers == null)
+            return;
+
+        for (int i = 0; i < answers.Length; i++)
+        {
+            if (answerHandlers[i] == null)
+                continue;
+
+            answers[i].onClick.RemoveListener(answerHandlers[i]);
         }
     }
 
-    void Update()
-    {
-        if (Input.GetMouseButtonDown(0))
-            TryClickCenterButton();
-    }
-
-    public void StartChallange()
+    private void StartChallenge()
     {
         answerLocked = false;
         SetAnswersInteractable(true);
 
+        GenerateExercise();
+        FillAnswers();
+    }
+
+    private void GenerateExercise()
+    {
         switch (level)
         {
             case 1:
-                int a = Random.Range(100, 999);
-                int b = Random.Range(100, 999);
-                ans = a + b;
-                exercise.text = a + " + " + b + " =";
-                break;
-            case 2:
-                int c = Random.Range(100, 200);
-                int d = Random.Range(3, 6);
-                ans = c * d;
-                exercise.text = c + " * " + d + " =";
-                break;
-            case 3:
-                int e = Random.Range(11, 30);
-                ans = (int)System.Math.Pow(e, 2);
-                exercise.text = e + "^2" + " =";
-                break;
-            case 4:
-                int f = Random.Range(11, 30);
-                int g = (int)System.Math.Pow(f, 2);
-                ans = f + g;
-                exercise.text = f + " + " + f + "^2" + " =";
-                break;
-            case 5:
-                int z = Random.Range(100, 200);
-                int x = z * Random.Range(3, 6);
-                ans = x/z;
-                exercise.text = x + " : " + z + " =";
-                break;
-            case 6:
-                int x1 = Random.Range(3, 9);
-                int x2 = Random.Range(3, 9);
-                ans = (int)Mathf.Pow((x1 + x2),2);
-                exercise.text = x1 + "^2 + " + "2 * " + x1 + "*" + x2 + " + " + x2 + "^2" + " =";
-                break;
-            default:
-                break;
-        }
-        
-        int rightB = Random.Range(0, answers.Length);
-        List<int> ints = new List<int>();
-        for (int i = 0; i < answers.Length; i++)
-        {
-            if (i == rightB)
-                answers[i].GetComponentInChildren<TextMeshProUGUI>().text = ans.ToString();
-            else
             {
-                int r = Random.Range(-10, 10);
-                while (r == 0 || ints.Contains(r))
-                    r = Random.Range(-10, 10);
-                answers[i].GetComponentInChildren<TextMeshProUGUI>().text = (ans + r).ToString();
-                ints.Add(r);
+                int a = UnityEngine.Random.Range(100, 999);
+                int b = UnityEngine.Random.Range(100, 999);
+                correctAnswer = a + b;
+                exercise.text = $"{a} + {b} =";
+                break;
             }
+            case 2:
+            {
+                int a = UnityEngine.Random.Range(100, 200);
+                int b = UnityEngine.Random.Range(3, 6);
+                correctAnswer = a * b;
+                exercise.text = $"{a} * {b} =";
+                break;
+            }
+            case 3:
+            {
+                int a = UnityEngine.Random.Range(11, 30);
+                correctAnswer = a * a;
+                exercise.text = $"{a}^2 =";
+                break;
+            }
+            case 4:
+            {
+                int a = UnityEngine.Random.Range(11, 30);
+                int square = a * a;
+                correctAnswer = a + square;
+                exercise.text = $"{a} + {a}^2 =";
+                break;
+            }
+            case 5:
+            {
+                int divisor = UnityEngine.Random.Range(100, 200);
+                int multiplier = UnityEngine.Random.Range(3, 6);
+                int dividend = divisor * multiplier;
+                correctAnswer = dividend / divisor;
+                exercise.text = $"{dividend} : {divisor} =";
+                break;
+            }
+            case 6:
+            {
+                int x1 = UnityEngine.Random.Range(3, 9);
+                int x2 = UnityEngine.Random.Range(3, 9);
+                int sum = x1 + x2;
+                correctAnswer = sum * sum;
+                exercise.text = $"{x1}^2 + 2 * {x1}*{x2} + {x2}^2 =";
+                break;
+            }
+            default:
+                Destroy(gameObject);
+                break;
         }
     }
 
-    public void CheckAnswer(Button button)
+    private void FillAnswers()
     {
-        if (lastAnswerFrame == Time.frameCount)
-            return;
+        int rightButtonIndex = UnityEngine.Random.Range(0, answers.Length);
+        System.Collections.Generic.HashSet<int> usedOffsets = new System.Collections.Generic.HashSet<int>();
 
-        lastAnswerFrame = Time.frameCount;
+        for (int i = 0; i < answers.Length; i++)
+        {
+            TextMeshProUGUI answerLabel = answers[i].GetComponentInChildren<TextMeshProUGUI>();
+            if (answerLabel == null)
+                continue;
 
+            if (i == rightButtonIndex)
+            {
+                answerLabel.text = correctAnswer.ToString();
+                continue;
+            }
+
+            int offset = UnityEngine.Random.Range(-10, 10);
+            while (offset == 0 || usedOffsets.Contains(offset))
+                offset = UnityEngine.Random.Range(-10, 10);
+
+            usedOffsets.Add(offset);
+            answerLabel.text = (correctAnswer + offset).ToString();
+        }
+    }
+
+    private void OnAnswerClicked(Button button)
+    {
         if (answerLocked)
             return;
 
         answerLocked = true;
         SetAnswersInteractable(false);
 
-        Debug.Log("Answer checked");
-        if (button.GetComponentInChildren<TextMeshProUGUI>().text == ans.ToString())
-        {
-            switch (level)
-            {
-                case 1:
-                    HeroItemDefinition item1 = Shop.I.GetRandomItemByRarity(ItemRarity.Common);
-                    GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>().ApplyItem(item1);
-                    Character_StatusBar.I.AddItem(item1);
-                    break;
-                case 2:
-                    HeroItemDefinition item2 = Shop.I.GetRandomItemByRarity(ItemRarity.Uncommon);
-                    GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>().ApplyItem(item2);
-                    Character_StatusBar.I.AddItem(item2);
-                    break;
-                case 3:
-                    HeroItemDefinition item3 = Shop.I.GetRandomItemByRarity(ItemRarity.Rare);
-                    GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>().ApplyItem(item3);
-                    Character_StatusBar.I.AddItem(item3);
-                    break;
-                case 4:
-                    HeroItemDefinition item4 = Shop.I.GetRandomItemByRarity(ItemRarity.Epic);
-                    GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>().ApplyItem(item4);
-                    Character_StatusBar.I.AddItem(item4);
-                    break;
-                case 5:
-                    HeroItemDefinition item5 = Shop.I.GetRandomItemByRarity(ItemRarity.Mythic);
-                    GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>().ApplyItem(item5);
-                    Character_StatusBar.I.AddItem(item5);
-                    break;
-                case 6:
-                    HeroItemDefinition item6 = Shop.I.GetRandomItemByRarity(ItemRarity.Legendary);
-                    GameObject.FindGameObjectWithTag("Player").GetComponent<Character_Properties>().ApplyItem(item6);
-                    Character_StatusBar.I.AddItem(item6);
-                    Destroy(gameObject);
-                    break;
-                default:
-                    break;
-            }
-            level++;
-            StartChallange();
-        }
-        else
+        bool isCorrect = IsCorrectAnswer(button);
+        if (!isCorrect)
         {
             Destroy(gameObject);
+            return;
         }
+
+        GiveRewardForCurrentLevel();
+
+        level++;
+        if (level > MaxLevel)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        StartChallenge();
     }
 
-    void SetAnswersInteractable(bool isInteractable)
+    private bool IsCorrectAnswer(Button button)
+    {
+        TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>();
+        if (label == null)
+            return false;
+
+        return int.TryParse(label.text, out int clickedValue) && clickedValue == correctAnswer;
+    }
+
+    private void GiveRewardForCurrentLevel()
+    {
+        ItemRarity rarity = level switch
+        {
+            1 => ItemRarity.Common,
+            2 => ItemRarity.Uncommon,
+            3 => ItemRarity.Rare,
+            4 => ItemRarity.Epic,
+            5 => ItemRarity.Mythic,
+            6 => ItemRarity.Legendary,
+            _ => ItemRarity.Common
+        };
+
+        HeroItemDefinition item = Shop.I.GetRandomItemByRarity(rarity);
+        if (item == null)
+            return;
+
+        if (playerProperties != null)
+            playerProperties.ApplyItem(item);
+
+        if (Character_StatusBar.I != null)
+            Character_StatusBar.I.AddItem(item);
+    }
+
+    private void SetAnswersInteractable(bool isInteractable)
     {
         for (int i = 0; i < answers.Length; i++)
             answers[i].interactable = isInteractable;
-    }
-
-    void TryClickCenterButton()
-    {
-        if (EventSystem.current == null)
-            return;
-
-        PointerEventData pointerData = new PointerEventData(EventSystem.current)
-        {
-            position = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f)
-        };
-
-        uiRaycastResults.Clear();
-        EventSystem.current.RaycastAll(pointerData, uiRaycastResults);
-
-        for (int i = 0; i < uiRaycastResults.Count; i++)
-        {
-            Button btn = uiRaycastResults[i].gameObject.GetComponentInParent<Button>();
-            if (btn != null && btn.interactable)
-            {
-                btn.onClick.Invoke();
-                return;
-            }
-        }
     }
 }
