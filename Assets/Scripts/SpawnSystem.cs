@@ -18,7 +18,6 @@ public class SpawnSystem : MonoBehaviour
 
     public MobSpawner[] mobSpawners;
 
-    public int difficultyLevel { get; private set; }
     public int waveIndex { get; private set; }
 
     float waveTimer;
@@ -104,30 +103,19 @@ public class SpawnSystem : MonoBehaviour
 
         foreach (var spawner in mobSpawners)
         {
-            spawner.SpawnWave(difficultyLevel, isBigWave);
+            spawner.SpawnWave((int)GetComponentInParent<Character_Properties>().difficulty, isBigWave);
         }
     }
 
     void IncreaseDifficulty()
     {
-        difficultyLevel++;
+        GetComponentInParent<Character_Properties>().difficulty++;
 
         foreach (var z in zombieTypes)
         {
-            if (z.unlockDifficulty == difficultyLevel)
+            if (z.unlockDifficulty == (int)GetComponentInParent<Character_Properties>().difficulty)
                 OnNewZombieUnlocked?.Invoke(z);
         }
-    }
-
-    List<ObjectPool> GetAvailableZombiePools()
-    {
-        List<ObjectPool> pools = new();
-
-        foreach (var z in zombieTypes)
-            if (difficultyLevel >= z.unlockDifficulty)
-                pools.Add(z.pool);
-
-        return pools;
     }
 
     void OnEnable()

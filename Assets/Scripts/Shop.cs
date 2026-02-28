@@ -38,27 +38,28 @@ public class Shop : MonoBehaviour
                 case ItemRarity.Legendary: legendaryItems.Add(item); break;
             }
         }
+        gameObject.SetActive(false);
     }
 
 
     ItemRarity RollRarity(float luck)
     {
-        float roll = Random.Range(0f, 1000f);
+        float roll = Random.Range(0f, 10000f);
 
         roll += luck * 5f;
 
-        roll = Mathf.Clamp(roll, 0f, 1000f);
+        roll = Mathf.Clamp(roll, 0f, 10000f);
 
-        if (roll < 600f) return ItemRarity.Common;
-        if (roll < 800f) return ItemRarity.Uncommon;
-        if (roll < 900f) return ItemRarity.Rare;
-        if (roll < 950f) return ItemRarity.Epic;
-        if (roll < 975f) return ItemRarity.Mythic;
+        if (roll < 6000f) return ItemRarity.Common;
+        if (roll < 8000f) return ItemRarity.Uncommon;
+        if (roll < 9000f) return ItemRarity.Rare;
+        if (roll < 9500f) return ItemRarity.Epic;
+        if (roll < 9750f) return ItemRarity.Mythic;
         return ItemRarity.Legendary;
     }
 
 
-    HeroItemDefinition GetRandomItemByRarity(ItemRarity rarity)
+    public HeroItemDefinition GetRandomItemByRarity(ItemRarity rarity)
     {
         List<HeroItemDefinition> source = rarity switch
         {

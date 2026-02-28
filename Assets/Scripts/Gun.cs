@@ -153,7 +153,6 @@ public class Gun : MonoBehaviour
                     DealDamage(zombie, hd);
                 }
 
-                //endPoint = hit.point;
                 currentDamage *= 0.8f;
                 if (currentDamage < 1f)
                     break;
@@ -174,16 +173,6 @@ public class Gun : MonoBehaviour
 
     public Zombie_Properies.HitData BuildHitData(bool isHeadshot)
     {
-        float missingHealthBonus = 1f;
-        if (owner != null)
-        {
-            var ownerStats = owner.GetStats();
-            float hpRatio = owner.GetCurrentHealthRatio();
-            missingHealthBonus += ownerStats.missingHealthDamage * (1f - hpRatio);
-            if (hpRatio <= 0.35f)
-                missingHealthBonus += ownerStats.lowHealthPower;
-        }
-
         bool isCrit = Random.value <= critChance;
         float critMultiplier = isCrit ? critDmgMultiplier : 1f;
         if (isHeadshot)
@@ -191,7 +180,7 @@ public class Gun : MonoBehaviour
 
         return new Zombie_Properies.HitData
         {
-            rawDamage = dmg * globalDamageMultiplier * missingHealthBonus,
+            rawDamage = dmg * globalDamageMultiplier,
             armorPenetration = armorPenetration,
             critMultiplier = critMultiplier
         };
@@ -200,11 +189,6 @@ public class Gun : MonoBehaviour
     void DealDamage(Zombie_Properies zombie, Zombie_Properies.HitData hitData)
     {
         float dealt = zombie.TakeHit(hitData);
-        if (owner != null)
-        {
-            float heal = dealt * Mathf.Max(0f, owner.GetStats().lifesteal);
-            owner.Heal(heal);
-        }
     }
 
     void DrawPierceLine(Vector3 start, Vector3 end)

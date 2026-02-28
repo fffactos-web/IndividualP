@@ -23,7 +23,7 @@ MonoBehaviour:
   rarity: 1
   cost: 0
   statModifiers:
-  - stat: 9
-    value: 15
   - stat: 10
-    value: 1
+    value: 15
+  - stat: 11
+    value: 2

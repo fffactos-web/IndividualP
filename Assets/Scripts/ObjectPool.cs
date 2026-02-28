@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class ObjectPool : MonoBehaviour
 {
     [SerializeField] GameObject prefab;
-    [SerializeField] int preloadCount = 32;
+    public int preloadCount = 32;
+    public bool isNavMeshAgent;
 
     Queue<GameObject> pool = new Queue<GameObject>();
 
@@ -14,33 +16,55 @@ public class ObjectPool : MonoBehaviour
             Create();
     }
 
-    void Create()
+    public void Create()
     {
-        GameObject obj = Instantiate(prefab);
-        obj.SetActive(false);
+        if (!isNavMeshAgent)
+        {
+            GameObject obj = Instantiate(prefab);
+            obj.SetActive(false);
 
-        foreach (var auto in obj.GetComponentsInChildren<AutoReturnToPool>(true))
-            auto.Init(this);
+            foreach (var auto in obj.GetComponentsInChildren<AutoReturnToPool>(true))
+                auto.Init(this);
 
-        pool.Enqueue(obj);
+            pool.Enqueue(obj);
+        }
     }
 
     public GameObject Spawn(Vector3 pos, Quaternion rot)
     {
-        if (pool.Count == 0)
-            Create();
+        if (!isNavMeshAgent)
+        {
+            if (pool.Count == 0)
+                Create();
 
-        GameObject obj = pool.Dequeue();
+            GameObject obj = pool.Dequeue();
 
-        obj.transform.SetParent(null);
+            obj.transform.SetParent(null);
 
-        obj.transform.SetPositionAndRotation(pos, rot);
-        obj.SetActive(true);
+            obj.transform.SetPositionAndRotation(pos, rot);
+            obj.SetActive(true);
 
-        foreach (var p in obj.GetComponentsInChildren<IPoolable>(true))
-            p.OnSpawn();
+            foreach (var p in obj.GetComponentsInChildren<IPoolable>(true))
+                p.OnSpawn();
 
-        return obj;
+            return obj;
+        }
+        else
+        {
+            if (pool.Count == 0)
+                Create();
+
+            GameObject obj = pool.Dequeue();
+
+            obj.transform.SetParent(null);
+            obj.GetComponent<NavMeshAgent>().Warp(pos);
+            obj.SetActive(true);
+
+            foreach (var p in obj.GetComponentsInChildren<IPoolable>(true))
+                p.OnSpawn();
+
+            return obj;
+        }
     }
 
 

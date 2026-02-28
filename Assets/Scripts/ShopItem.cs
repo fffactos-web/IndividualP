@@ -10,6 +10,12 @@ public class ShopItem : MonoBehaviour
     [SerializeField] TextMeshProUGUI itemCost;
 
     HeroItemDefinition item;
+    public static ShopItem I;
+
+    private void Awake()
+    {
+        I = this;
+    }
 
     public void SetItemVisual(HeroItemDefinition itemDefinition)
     {

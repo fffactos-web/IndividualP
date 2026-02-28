@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 using Vector3 = UnityEngine.Vector3;
 using Quaternion = UnityEngine.Quaternion;
+using UnityEngine.AI;
+using Unity.AI.Navigation;
 
 public enum TileType
 {
@@ -54,7 +56,13 @@ public class AdvancedLevelGenerator : MonoBehaviour
     [SerializeField] float chanceToGetUp = 0.25f;
     [SerializeField] float heightStep = 1f;
 
+    [Header("NavMesh")]
+    [SerializeField] NavMeshSurface nav;
+
     TileData[,] tiles;
+
+    [Header("Zombie Pools")]
+    [SerializeField] ObjectPool[] zombiePools;
 
     void Start()
     {
@@ -74,6 +82,20 @@ public class AdvancedLevelGenerator : MonoBehaviour
         InitializeGrid();
         GeneratePath();
         Spawn();
+        nav.BuildNavMesh();
+
+        InstantiateZombies();
+    }
+
+    void InstantiateZombies()
+    {
+        foreach (var zombiePool in zombiePools)
+        {
+            zombiePool.isNavMeshAgent = false;
+            for (int i = 0; i < zombiePool.preloadCount; i++)
+                zombiePool.Create();
+            zombiePool.isNavMeshAgent = true;
+        }
     }
 
     void Clear()
@@ -93,11 +115,6 @@ public class AdvancedLevelGenerator : MonoBehaviour
                 tiles[x, y] = new TileData(new Vector3Int(x, 0, y));
             }
         }
-    }
-
-    void InitializeUtilities()
-    {
-
     }
 
     void GeneratePath()

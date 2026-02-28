@@ -7,6 +7,8 @@ using UnityEngine.UIElements;
 public class Character_StatusBar : MonoBehaviour
 {
     public Action<float, Zombie_Properies> OnGetDamage;
+    public Action<float, Zombie_Properies, Character_Properties> OnHit;
+    public Action<Character_Properties> OnDie;
 
     public static Character_StatusBar I;
 

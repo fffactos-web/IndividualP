@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -7,15 +8,16 @@ public class MobSpawner : MonoBehaviour
     [SerializeField] float spawnRadius = 2.5f;
     [SerializeField] int maxAttemptsPerMob = 8;
     [SerializeField] float raycastHeight = 50f;
-    [SerializeField] float raycastDistance = 2000000f;
+    [SerializeField] float raycastDistance = 200f;
     [SerializeField] LayerMask groundMask = ~0;
     [SerializeField] float navMeshSampleDistance = 25f;
     [SerializeField] float verticalOffset = 0.1f;
+    public float championChance;
 
     public void SpawnWave(int difficulty, bool bigWave)
     {
         int baseMin = 3 + difficulty;
-        int baseMax = 5 + difficulty * 2;
+        int baseMax = 5 + (int)(difficulty * 1.2f); 
 
         if (bigWave)
         {
@@ -30,10 +32,21 @@ public class MobSpawner : MonoBehaviour
             if (!TryGetSpawnPoint(out Vector3 spawnPoint))
                 continue;
 
-            GameObject spawned = PoolManager.I.followerZombiePool.Spawn(
-                spawnPoint + Vector3.up * verticalOffset,
-                Quaternion.identity
-            );
+            GameObject spawned = PoolManager.I.followerZombiePool.Spawn(spawnPoint + Vector3.up * verticalOffset, Quaternion.identity);
+            if (spawned.GetComponentInChildren<Zombie_Properies>() != null)
+            {
+                if(championChance > Random.value)
+                {
+                    float value = Random.Range(2, 3);
+                    spawned.GetComponentInChildren<Zombie_Properies>().maxHealth = 25 * difficulty;
+                    spawned.GetComponentInChildren<Zombie_Properies>().currentHealth = spawned.GetComponentInChildren<Zombie_Properies>().maxHealth;
+                    spawned.GetComponent<Transform>().DOScale(103.6635f * Vector3.one * value, 1f);
+                }
+            }
+            if (spawned.GetComponentInChildren<Zombie_Follower>() != null)
+            {
+                spawned.GetComponentInChildren<Zombie_Follower>().damage = spawned.GetComponentInChildren<Zombie_Follower>().damage + (int)Random.value * 15;
+            }
 
             NavMeshAgent agent =
                 spawned.GetComponent<NavMeshAgent>() ??

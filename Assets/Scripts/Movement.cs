@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,10 +8,13 @@ public class Movement : MonoBehaviour
     private float staminaRegenTimer;
     private float runBoost;
     public float jumpForce = 75 * 4f;
+    public float dashTime;
+    public float dashPower;
     public bool inAir;
     public bool isRunning;
     public bool isFiring;
     public bool onTop;
+    public bool isDashing;
     private Camera camera;
     private Rigidbody rb;
     [SerializeField] Transform feetPos;
@@ -66,6 +70,8 @@ public class Movement : MonoBehaviour
     public void ResetProperties()
     {
         Character_Properties.HeroStats heroStats = characterStats.GetStats();
+        maxStamina = heroStats.maxStamina;
+        staminaBar.maxValue = maxStamina;
         runBoost = heroStats.runSpeed;
     }
 
@@ -97,8 +103,8 @@ public class Movement : MonoBehaviour
         animator.SetBool("Run", isRunning);
 
 
-        if (Input.GetKeyDown(KeyCode.LeftControl) && dashCooldownTimer <= 0f)
-            Dash(camForward, camRight, moveHorizontal, moveVertical, stats);
+        if (Input.GetKeyDown(KeyCode.LeftControl))
+            Dash();
 
         if (Input.GetMouseButtonDown(0))
         {
@@ -156,8 +162,8 @@ public class Movement : MonoBehaviour
 
         Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
         horizontal = Vector3.Lerp(horizontal, moveDir, Time.deltaTime * 10f * acceleration * control);
-        //rb.AddForce(new Vector3(horizontal.x, 0, horizontal.z), ForceMode.VelocityChange);
-        rb.velocity = new Vector3(horizontal.x, velocity.y, horizontal.z);
+        if(!isDashing)
+            rb.velocity = new Vector3(horizontal.x, velocity.y, horizontal.z);
 
         if (animator.gameObject.active)
         {
@@ -211,20 +217,15 @@ public class Movement : MonoBehaviour
 
 
 
-    void Dash(Vector3 camForward, Vector3 camRight, float horizontal, float vertical, Character_Properties.HeroStats stats)
+    IEnumerator Dash()
     {
-        Vector3 dir = (camForward * vertical + camRight * horizontal);
-        if (dir.sqrMagnitude < 0.0001f)
-            dir = transform.forward;
-
-        dir.Normalize();
-
-        float dashMultiplier = stats != null ? stats.runSpeed : 1f;
-        float accel = stats != null ? stats.globalAcceleration : 1f;
-        float dashSpeed = baseWalkSpeed * runBoost * dashMultiplier * accel;
-
-        rb.velocity = new Vector3(dir.x * dashSpeed, rb.velocity.y, dir.z * dashSpeed);
-        dashCooldownTimer = 0.8f;
+        isDashing = true;
+        Vector3 dashToVector = camera.transform.forward;
+        rb.velocity = dashToVector * dashPower;
+        yield return new WaitForSeconds(dashTime);
+        Debug.Log("Dashed");
+        isDashing = false;
+        dashCooldownTimer = 1f;
     }
 
     void HandleStamina()

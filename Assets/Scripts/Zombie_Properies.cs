@@ -42,6 +42,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     [SerializeField] private float coneHeight = 2f;
     [SerializeField] private float coneRadius = 2f;
 
+    public int bonusExpirience = 0;
+
     void Awake()
     {
         killsStatus = GameObject.FindGameObjectWithTag("Kills Status").GetComponent<TextMeshProUGUI>();
@@ -100,11 +102,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         float armorMultiplier = 100f / (100f + effectiveArmor);
         float damageAfterMitigation = hitData.rawDamage * Mathf.Max(1f, hitData.critMultiplier) * armorMultiplier * (1f - resistance);
 
-        if (hasStatus && character != null)
-            damageAfterMitigation *= 1f + character.GetStats().damageVsStatusTargets;
-
-
         currentHealth -= damageAfterMitigation;
+        Character_StatusBar.I.OnHit?.Invoke(damageAfterMitigation, this, character);
         ShowDamage(damageAfterMitigation);
 
         if (currentHealth <= 0)
@@ -144,7 +143,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
         lastDamageTime = Time.time;
     }
 
-    void Die()
+    public void Die()
     {
         if (damagePopup != null)
         {
@@ -166,6 +165,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     void SpawnGems()
     {
         int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
+        gemCount = gemCount + (gemCount / 100) * bonusExpirience;
 
         for (int i = 0; i < gemCount; i++)
         {
@@ -180,7 +180,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     void SpawnExpirience()
     {
-        int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
+        int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty * 5);
 
         for (int i = 0; i < gemCount; i++)
         {

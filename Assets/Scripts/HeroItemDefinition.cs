@@ -52,9 +52,6 @@ public enum HeroStatType
     ArmorPenetration,
     GlobalDamageMultiplier,
     GlobalAttackSpeed,
-    DamageVsStatusTargets,
-    MissingHealthDamage,
-    LowHealthPower,
 
     MaxHealth,
     HealthRegen,
@@ -62,36 +59,18 @@ public enum HeroStatType
     MaxShield,
     Armor,
     Resistance,
-    Lifesteal,
 
     MoveSpeed,
+    MaxStamina,
     DashSpeed,
     JumpCount,
     AirControl,
     GlobalAcceleration,
 
-    CooldownReduction,
-    CastSpeed,
-
-    SkillResource,
-    MaxSkillResource,
-    ResourceRegen,
-
     ProcChance,
     ProcPower,
-    ProcCount,
 
-    StatusChance,
-    StatusDuration,
-
-    KillBonus,
-    KillStreakBonus,
-    OnHitTakenEffectPower,
-    StatExchange,
     Luck,
 
     AttackRadius,
-    SkillRange,
-    AbilityHitboxSize,
-    ItemSlotLimit
 }

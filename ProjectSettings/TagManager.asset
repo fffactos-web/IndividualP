@@ -21,6 +21,7 @@ TagManager:
   - Shop
   - Gunn
   - Gun
+  - Button
   layers:
   - Default
   - TransparentFX
