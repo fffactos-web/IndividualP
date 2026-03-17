@@ -51,7 +51,6 @@ public class Expirience : MonoBehaviour
         if (!isFlying) return;
         if (other.CompareTag("Player"))
         {
-            value = (int)(c.difficulty * UnityEngine.Random.Range(1, 5f));
             c.AddExperience(value);
             touched = false;
             PoolManager.I.gemPool.Despawn(gameObject);

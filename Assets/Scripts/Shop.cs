@@ -44,17 +44,18 @@ public class Shop : MonoBehaviour
 
     ItemRarity RollRarity(float luck)
     {
-        float roll = Random.Range(0f, 10000f);
+        float roll = Random.Range(0f, 1f);
 
-        roll += luck * 5f;
+        // Нелинейное влияние удачи
+        // Чем больше luck, тем сильнее "сжимается" нижняя часть распределения
+        float luckFactor = Mathf.Clamp01(luck / 100f);
+        roll = Mathf.Pow(roll, 1f - luckFactor * 0.7f);
 
-        roll = Mathf.Clamp(roll, 0f, 10000f);
-
-        if (roll < 6000f) return ItemRarity.Common;
-        if (roll < 8000f) return ItemRarity.Uncommon;
-        if (roll < 9000f) return ItemRarity.Rare;
-        if (roll < 9500f) return ItemRarity.Epic;
-        if (roll < 9750f) return ItemRarity.Mythic;
+        if (roll < 0.90f) return ItemRarity.Common;
+        if (roll < 0.98f) return ItemRarity.Uncommon;
+        if (roll < 0.995f) return ItemRarity.Rare;
+        if (roll < 0.999f) return ItemRarity.Epic;
+        if (roll < 0.9999f) return ItemRarity.Mythic;
         return ItemRarity.Legendary;
     }
 

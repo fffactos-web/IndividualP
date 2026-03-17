@@ -16,8 +16,8 @@ public class MobSpawner : MonoBehaviour
 
     public void SpawnWave(int difficulty, bool bigWave)
     {
-        int baseMin = 3 + difficulty;
-        int baseMax = 5 + (int)(difficulty * 1.2f); 
+        int baseMin = 0 + difficulty;
+        int baseMax = 2 + (int)(difficulty * 1.4f); 
 
         if (bigWave)
         {

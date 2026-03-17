@@ -36,7 +36,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     Quaternion initialLocalRotation;
     Vector3 initialLocalPosition;
 
-    [SerializeField] private int baseGemCount = 2;
+    [SerializeField] private int baseGemCount = 1;
     [SerializeField] private int gemCountPerDifficulty = 2;
 
     [SerializeField] private float coneHeight = 2f;
@@ -164,8 +164,8 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     void SpawnGems()
     {
-        int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty);
-        gemCount = gemCount + (gemCount / 100) * bonusExpirience;
+        int gemCount = baseGemCount + Mathf.RoundToInt((character.difficulty-1) * gemCountPerDifficulty);
+        gemCount = gemCount + (int)((gemCount / 100) * bonusExpirience);
 
         for (int i = 0; i < gemCount; i++)
         {
@@ -180,7 +180,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     void SpawnExpirience()
     {
-        int gemCount = baseGemCount + Mathf.RoundToInt(character.difficulty * gemCountPerDifficulty * 5);
+        int gemCount = Random.Range(1, 3);
 
         for (int i = 0; i < gemCount; i++)
         {
