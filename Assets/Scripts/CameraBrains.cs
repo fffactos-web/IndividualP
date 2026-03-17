@@ -19,6 +19,7 @@ public class CameraBrains : MonoBehaviour
     GameObject gunHolder;
     CinemachineVirtualCamera cam;
     GameObject character;
+    Renderer[] characterRenderers;
     RectTransform rect;
     Movement movement;
 
@@ -26,6 +27,7 @@ public class CameraBrains : MonoBehaviour
     {
         cam = GetComponent<CinemachineVirtualCamera>();
         character = GameObject.FindGameObjectWithTag("Character");
+        characterRenderers = character.GetComponentsInChildren<Renderer>(true);
         gunHolder = GameObject.FindGameObjectWithTag("Camera Gun");
         movement = GameObject.FindGameObjectWithTag("Player").GetComponent<Movement>();
         rect = GameObject.FindGameObjectWithTag("Crosshair").GetComponent<RectTransform>();
@@ -56,7 +58,7 @@ public class CameraBrains : MonoBehaviour
                 firstPersonCam.GetCinemachineComponent<CinemachinePOV>().m_VerticalAxis = cam.GetCinemachineComponent<CinemachinePOV>().m_VerticalAxis;
                 firstPersonCam.GetCinemachineComponent<CinemachinePOV>().m_HorizontalAxis = cam.GetCinemachineComponent<CinemachinePOV>().m_HorizontalAxis;
                 cam.m_Priority += -2;
-                character.SetActive(false);
+                SetCharacterVisible(false);
                 isOn = false;
                 foreach (var bar in healthBars)
                     if (bar != null)
@@ -70,7 +72,7 @@ public class CameraBrains : MonoBehaviour
                 cam.GetCinemachineComponent<CinemachinePOV>().m_VerticalAxis = firstPersonCam.GetCinemachineComponent<CinemachinePOV>().m_VerticalAxis;
                 cam.GetCinemachineComponent<CinemachinePOV>().m_HorizontalAxis = firstPersonCam.GetCinemachineComponent<CinemachinePOV>().m_HorizontalAxis;
                 cam.m_Priority += 2;
-                character.SetActive(true);
+                SetCharacterVisible(true);
                 isOn = true;
                 foreach (var bar in healthBars)
                     if(bar != null)
@@ -80,6 +82,18 @@ public class CameraBrains : MonoBehaviour
                 animator.SetBool("Fire", movement.isFiring); 
                 animator.SetFloat("Speed", movement.animatorSpeed);
             }
+        }
+    }
+
+    void SetCharacterVisible(bool isVisible)
+    {
+        if (characterRenderers == null)
+            return;
+
+        foreach (var item in characterRenderers)
+        {
+            if (item != null)
+                item.enabled = isVisible;
         }
     }
 }
