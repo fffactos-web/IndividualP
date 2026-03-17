@@ -22,18 +22,11 @@ public class CameraBrains : MonoBehaviour
     {
         cam = GetComponent<CinemachineVirtualCamera>();
         character = GameObject.FindGameObjectWithTag("Character");
-        if (character != null)
-        {
-            characterRenderers = character.GetComponentsInChildren<Renderer>(true);
-            animator = character.GetComponent<Animator>();
-            if (animator != null)
-                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-        }
-
-        movement = GameObject.FindGameObjectWithTag("Player")?.GetComponent<Movement>();
-        rect = GameObject.FindGameObjectWithTag("Crosshair")?.GetComponent<RectTransform>();
-
-        TryResolveGunHolders();
+        characterRenderers = character.GetComponentsInChildren<Renderer>(true);
+        gunHolder = GameObject.FindGameObjectWithTag("Camera Gun");
+        movement = GameObject.FindGameObjectWithTag("Player").GetComponent<Movement>();
+        rect = GameObject.FindGameObjectWithTag("Crosshair").GetComponent<RectTransform>();
+        animator = character.GetComponent<Animator>();
     }
 
     void Update()
@@ -106,15 +99,6 @@ public class CameraBrains : MonoBehaviour
                 }
             }
         }
-    }
-
-    void TryResolveGunHolders()
-    {
-        if (firstPersonGunHolder == null)
-            firstPersonGunHolder = GameObject.FindGameObjectWithTag("Camera Gun");
-
-        if (thirdPersonGunHolder == null)
-            thirdPersonGunHolder = GameObject.FindGameObjectWithTag("Gunn");
     }
 
     void SetCharacterVisible(bool isVisible)
