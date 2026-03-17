@@ -12,6 +12,7 @@ public class Movement : MonoBehaviour
     public float dashPower;
     public bool inAir;
     public bool isRunning;
+    public bool isWalking;
     public bool isFiring;
     public bool onTop;
     public bool isDashing;
@@ -38,15 +39,15 @@ public class Movement : MonoBehaviour
     public UnityEngine.UI.Slider staminaBar;
 
     [Header("Bunny Hop")]
-    [SerializeField] float bunnyHopBoost = 2.5f;     // сила буста
-    [SerializeField] float bunnyHopWindow = 0.15f;   // окно тайминга после приземления
+    [SerializeField] float bunnyHopBoost = 2.5f;     // Г±ГЁГ«Г  ГЎГіГ±ГІГ 
+    [SerializeField] float bunnyHopWindow = 0.15f;   // Г®ГЄГ­Г® ГІГ Г©Г¬ГЁГ­ГЈГ  ГЇГ®Г±Г«ГҐ ГЇГ°ГЁГ§ГҐГ¬Г«ГҐГ­ГЁГї
     [SerializeField] float goundCheckDistance;
     float lastJumpPressedTime;
 
     [Header("Ground check (robust)")]
     [SerializeField] LayerMask groundMask = ~0;
-    [SerializeField] float minGroundDot = 0.65f; // минимальная dot( normal, up ) чтобы считать поверхность "землей"
-    [SerializeField] float ignoreGroundAfterJump = 0.06f; // время, в течение которого игнорируем моментальные коллизии после прыжка
+    [SerializeField] float minGroundDot = 0.65f; // Г¬ГЁГ­ГЁГ¬Г Г«ГјГ­Г Гї dot( normal, up ) Г·ГІГ®ГЎГ» Г±Г·ГЁГІГ ГІГј ГЇГ®ГўГҐГ°ГµГ­Г®Г±ГІГј "Г§ГҐГ¬Г«ГҐГ©"
+    [SerializeField] float ignoreGroundAfterJump = 0.06f; // ГўГ°ГҐГ¬Гї, Гў ГІГҐГ·ГҐГ­ГЁГҐ ГЄГ®ГІГ®Г°Г®ГЈГ® ГЁГЈГ­Г®Г°ГЁГ°ГіГҐГ¬ Г¬Г®Г¬ГҐГ­ГІГ Г«ГјГ­Г»ГҐ ГЄГ®Г«Г«ГЁГ§ГЁГЁ ГЇГ®Г±Г«ГҐ ГЇГ°Г»Г¦ГЄГ 
 
     HashSet<Collider> groundContacts = new HashSet<Collider>();
     float lastGroundedTime = -10f;
@@ -133,19 +134,22 @@ public class Movement : MonoBehaviour
 
         Ray rRay = new Ray(feetPos.position, -transform.up);
 
-        // --- в Update(), где нужно знать grounded ---
+        // --- Гў Update(), ГЈГ¤ГҐ Г­ГіГ¦Г­Г® Г§Г­Г ГІГј grounded ---
         bool rawGrounded = groundContacts.Count > 0;
 
-        // дополнительно: игнорируем "подлетающие" срабатывания сразу после прыжка
+        // Г¤Г®ГЇГ®Г«Г­ГЁГІГҐГ«ГјГ­Г®: ГЁГЈГ­Г®Г°ГЁГ°ГіГҐГ¬ "ГЇГ®Г¤Г«ГҐГІГ ГѕГ№ГЁГҐ" Г±Г°Г ГЎГ ГІГ»ГўГ Г­ГЁГї Г±Г°Г Г§Гі ГЇГ®Г±Г«ГҐ ГЇГ°Г»Г¦ГЄГ 
         bool grounded = rawGrounded && Time.time > ignoreGroundUntil;
 
-        // защита: если мы всё ещё движемся вверх — не считать землю (предотвращает мгновенное ресет в прыжке)
+        // Г§Г Г№ГЁГІГ : ГҐГ±Г«ГЁ Г¬Г» ГўГ±Вё ГҐГ№Вё Г¤ГўГЁГ¦ГҐГ¬Г±Гї ГўГўГҐГ°Гµ вЂ” Г­ГҐ Г±Г·ГЁГІГ ГІГј Г§ГҐГ¬Г«Гѕ (ГЇГ°ГҐГ¤Г®ГІГўГ°Г Г№Г ГҐГІ Г¬ГЈГ­Г®ГўГҐГ­Г­Г®ГҐ Г°ГҐГ±ГҐГІ Гў ГЇГ°Г»Г¦ГЄГҐ)
         if (grounded && rb.velocity.y > 1.0f) grounded = false;
 
-        // применяем состояние
+        isWalking = moveHorizontal != 0 || moveVertical != 0;
+        animatorSpeed = horizontal.magnitude;
+
+            animator.SetBool("Walk", isWalking);
         if (grounded)
         {
-            if (inAir) lastGroundedTime = Time.time; // фиксим момент приземления
+            if (inAir) lastGroundedTime = Time.time; // ГґГЁГЄГ±ГЁГ¬ Г¬Г®Г¬ГҐГ­ГІ ГЇГ°ГЁГ§ГҐГ¬Г«ГҐГ­ГЁГї
             onTop = false;
             inAir = false;
             jumpsUsed = 0;
@@ -182,29 +186,29 @@ public class Movement : MonoBehaviour
 
     void Jump()
     {
-        // в начале Jump() после проверки maxJumps и перед изменением velocity:
+        // Гў Г­Г Г·Г Г«ГҐ Jump() ГЇГ®Г±Г«ГҐ ГЇГ°Г®ГўГҐГ°ГЄГЁ maxJumps ГЁ ГЇГҐГ°ГҐГ¤ ГЁГ§Г¬ГҐГ­ГҐГ­ГЁГҐГ¬ velocity:
         ignoreGroundUntil = Time.time + ignoreGroundAfterJump;
 
         int maxJumps = characterStats != null ? characterStats.GetStats().jumpCount : 1;
         if (jumpsUsed >= maxJumps)
             return;
 
-        // проверяем тайминг
+        // ГЇГ°Г®ГўГҐГ°ГїГҐГ¬ ГІГ Г©Г¬ГЁГ­ГЈ
         bool timedBhop = (Time.time - lastGroundedTime) <= bunnyHopWindow;
 
         Vector3 horizontal = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
-        // если это НЕ таймленный прыжок — слегка режем скорость
+        // ГҐГ±Г«ГЁ ГЅГІГ® ГЌГ… ГІГ Г©Г¬Г«ГҐГ­Г­Г»Г© ГЇГ°Г»Г¦Г®ГЄ вЂ” Г±Г«ГҐГЈГЄГ  Г°ГҐГ¦ГҐГ¬ Г±ГЄГ®Г°Г®Г±ГІГј
         if (!timedBhop)
-            horizontal *= 0.85f;   // обычный прыжок немного гасит скорость
+            horizontal *= 0.85f;   // Г®ГЎГ»Г·Г­Г»Г© ГЇГ°Г»Г¦Г®ГЄ Г­ГҐГ¬Г­Г®ГЈГ® ГЈГ Г±ГЁГІ Г±ГЄГ®Г°Г®Г±ГІГј
 
-        // обнуляем вертикаль
+        // Г®ГЎГ­ГіГ«ГїГҐГ¬ ГўГҐГ°ГІГЁГЄГ Г«Гј
         rb.velocity = new Vector3(horizontal.x, 0f, horizontal.z);
 
-        // обычный прыжок вверх
+        // Г®ГЎГ»Г·Г­Г»Г© ГЇГ°Г»Г¦Г®ГЄ ГўГўГҐГ°Гµ
         rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
 
-        // если это bunny hop — добавляем импульс вперёд
+        // ГҐГ±Г«ГЁ ГЅГІГ® bunny hop вЂ” Г¤Г®ГЎГ ГўГ«ГїГҐГ¬ ГЁГ¬ГЇГіГ«ГјГ± ГўГЇГҐГ°ВёГ¤
         if (timedBhop && horizontal.magnitude > 0.1f)
         {
             Vector3 boostDir = horizontal.normalized;
@@ -258,25 +262,25 @@ public class Movement : MonoBehaviour
 
     void OnCollisionExit(Collision collision)
     {
-        // при выходе — удаляем коллайдер из множества
+        // ГЇГ°ГЁ ГўГ»ГµГ®Г¤ГҐ вЂ” ГіГ¤Г Г«ГїГҐГ¬ ГЄГ®Г«Г«Г Г©Г¤ГҐГ° ГЁГ§ Г¬Г­Г®Г¦ГҐГ±ГІГўГ 
         if (groundContacts.Contains(collision.collider))
             groundContacts.Remove(collision.collider);
     }
 
     void EvaluateCollisionForGround(Collision collision)
     {
-        // проверяем, что слой collision входит в groundMask
+        // ГЇГ°Г®ГўГҐГ°ГїГҐГ¬, Г·ГІГ® Г±Г«Г®Г© collision ГўГµГ®Г¤ГЁГІ Гў groundMask
         if (((1 << collision.gameObject.layer) & groundMask) == 0)
             return;
 
-        // проверяем все контакты — если есть контакт с нормалью достаточно "вверх"
+        // ГЇГ°Г®ГўГҐГ°ГїГҐГ¬ ГўГ±ГҐ ГЄГ®Г­ГІГ ГЄГІГ» вЂ” ГҐГ±Г«ГЁ ГҐГ±ГІГј ГЄГ®Г­ГІГ ГЄГІ Г± Г­Г®Г°Г¬Г Г«ГјГѕ Г¤Г®Г±ГІГ ГІГ®Г·Г­Г® "ГўГўГҐГ°Гµ"
         foreach (ContactPoint cp in collision.contacts)
         {
             float dot = Vector3.Dot(cp.normal, Vector3.up);
             if (dot >= minGroundDot)
             {
                 groundContacts.Add(collision.collider);
-                return; // достаточно одного подходящего контакта
+                return; // Г¤Г®Г±ГІГ ГІГ®Г·Г­Г® Г®Г¤Г­Г®ГЈГ® ГЇГ®Г¤ГµГ®Г¤ГїГ№ГҐГЈГ® ГЄГ®Г­ГІГ ГЄГІГ 
             }
         }
     }

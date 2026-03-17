@@ -110,13 +110,6 @@ public class CameraBrains : MonoBehaviour
                     if (bar != null)
                         bar.SetActive(true);
 
-                if (animator != null && movement != null)
-                {
-                    animator.SetBool("Run", movement.isRunning);
-                    animator.SetBool("Jump", movement.inAir);
-                    animator.SetBool("Fire", movement.isFiring);
-                    animator.SetFloat("Speed", movement.animatorSpeed);
-                }
             }
         }
     }
@@ -160,13 +153,52 @@ public class CameraBrains : MonoBehaviour
 
     void RestoreAnimatorAfterThirdPersonSwitch()
     {
-        if (animator == null)
+        if (animator == null || movement == null)
             return;
-
-        animator.Rebind();
-        animator.Update(0f);
 
         if (hasAnimatorCullingMode)
             animator.cullingMode = defaultAnimatorCullingMode;
+
+        animator.SetBool("Run", movement.isRunning);
+        animator.SetBool("Walk", movement.isWalking);
+        animator.SetBool("Jump", movement.inAir);
+        animator.SetBool("Fire", movement.isFiring);
+        animator.SetFloat("Speed", movement.animatorSpeed);
+
+        TrySoftRefreshAnimatorState();
+    }
+
+    void TrySoftRefreshAnimatorState()
+    {
+        int layer = 0;
+
+        if (animator.layerCount <= layer || animator.IsInTransition(layer))
+            return;
+
+        string expectedStateName = ResolveExpectedStateName();
+        int expectedStateHash = Animator.StringToHash(expectedStateName);
+        AnimatorStateInfo currentState = animator.GetCurrentAnimatorStateInfo(layer);
+
+        if (currentState.shortNameHash == expectedStateHash)
+            return;
+
+        animator.CrossFade(expectedStateName, 0.1f, layer, 0f);
+    }
+
+    string ResolveExpectedStateName()
+    {
+        if (movement.inAir)
+            return "Jump";
+
+        if (movement.isFiring)
+            return "Fire";
+
+        if (movement.isRunning)
+            return "Run";
+
+        if (movement.isWalking)
+            return "Walk";
+
+        return "Idle";
     }
 }
