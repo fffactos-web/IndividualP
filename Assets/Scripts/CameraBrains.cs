@@ -5,6 +5,8 @@ public class CameraBrains : MonoBehaviour
 {
     bool isOn = true;
     public float crosshairY = 40;
+    AnimatorCullingMode defaultAnimatorCullingMode;
+    bool hasAnimatorCullingMode;
 
     [SerializeField] CinemachineVirtualCamera firstPersonCam;
     [SerializeField] GameObject[] healthBars;
@@ -22,11 +24,27 @@ public class CameraBrains : MonoBehaviour
     {
         cam = GetComponent<CinemachineVirtualCamera>();
         character = GameObject.FindGameObjectWithTag("Character");
-        characterRenderers = character.GetComponentsInChildren<Renderer>(true);
-        gunHolder = GameObject.FindGameObjectWithTag("Camera Gun");
-        movement = GameObject.FindGameObjectWithTag("Player").GetComponent<Movement>();
-        rect = GameObject.FindGameObjectWithTag("Crosshair").GetComponent<RectTransform>();
-        animator = character.GetComponent<Animator>();
+        if (character != null)
+            characterRenderers = character.GetComponentsInChildren<Renderer>(true);
+
+        TryResolveGunHolders();
+
+        var player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+            movement = player.GetComponent<Movement>();
+
+        var crosshair = GameObject.FindGameObjectWithTag("Crosshair");
+        if (crosshair != null)
+            rect = crosshair.GetComponent<RectTransform>();
+
+        if (character != null)
+            animator = character.GetComponent<Animator>();
+
+        if (animator != null)
+        {
+            defaultAnimatorCullingMode = animator.cullingMode;
+            hasAnimatorCullingMode = true;
+        }
     }
 
     void Update()
@@ -64,6 +82,7 @@ public class CameraBrains : MonoBehaviour
                 firstPersonCam.GetCinemachineComponent<CinemachinePOV>().m_HorizontalAxis = cam.GetCinemachineComponent<CinemachinePOV>().m_HorizontalAxis;
                 cam.m_Priority += -2;
                 SetCharacterVisible(false);
+                SetAnimatorForFirstPerson();
                 isOn = false;
 
                 foreach (var bar in healthBars)
@@ -84,6 +103,7 @@ public class CameraBrains : MonoBehaviour
                 cam.GetCinemachineComponent<CinemachinePOV>().m_HorizontalAxis = firstPersonCam.GetCinemachineComponent<CinemachinePOV>().m_HorizontalAxis;
                 cam.m_Priority += 2;
                 SetCharacterVisible(true);
+                RestoreAnimatorAfterThirdPersonSwitch();
                 isOn = true;
 
                 foreach (var bar in healthBars)
@@ -111,5 +131,42 @@ public class CameraBrains : MonoBehaviour
             if (item != null)
                 item.enabled = isVisible;
         }
+    }
+
+    void TryResolveGunHolders()
+    {
+        if (thirdPersonGunHolder == null)
+        {
+            var worldGunHolder = GameObject.FindGameObjectWithTag("Gunn");
+            if (worldGunHolder != null)
+                thirdPersonGunHolder = worldGunHolder;
+        }
+
+        if (firstPersonGunHolder == null)
+        {
+            var cameraGun = GameObject.FindGameObjectWithTag("Camera Gun");
+            if (cameraGun != null)
+                firstPersonGunHolder = cameraGun;
+        }
+    }
+
+    void SetAnimatorForFirstPerson()
+    {
+        if (animator == null)
+            return;
+
+        animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+    }
+
+    void RestoreAnimatorAfterThirdPersonSwitch()
+    {
+        if (animator == null)
+            return;
+
+        animator.Rebind();
+        animator.Update(0f);
+
+        if (hasAnimatorCullingMode)
+            animator.cullingMode = defaultAnimatorCullingMode;
     }
 }
