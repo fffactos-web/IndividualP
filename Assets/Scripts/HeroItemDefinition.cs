@@ -73,4 +73,6 @@ public enum HeroStatType
     Luck,
 
     AttackRadius,
+    Expirience,
+    Gold
 }

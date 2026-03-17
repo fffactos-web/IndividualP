@@ -164,7 +164,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
 
     void SpawnGems()
     {
-        int gemCount = baseGemCount + Mathf.RoundToInt((character.difficulty-1) * gemCountPerDifficulty);
+        int gemCount = baseGemCount + Mathf.RoundToInt((character.difficulty-1) * gemCountPerDifficulty * character.GetStats().gold);
         gemCount = gemCount + (int)((gemCount / 100) * bonusExpirience);
 
         for (int i = 0; i < gemCount; i++)
@@ -182,7 +182,7 @@ public class Zombie_Properies : MonoBehaviour, IPoolable
     {
         int gemCount = Random.Range(1, 3);
 
-        for (int i = 0; i < gemCount; i++)
+        for (int i = 0; i < gemCount * character.GetStats().exp; i++)
         {
             float angle = Random.Range(0f, Mathf.PI * 2f);
             float radius = Random.Range(coneRadius, coneRadius * 2);

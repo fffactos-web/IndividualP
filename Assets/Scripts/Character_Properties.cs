@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Character_Properties : MonoBehaviour
@@ -50,6 +51,10 @@ public class Character_Properties : MonoBehaviour
 
         [Header("AoE / ranges")]
         public float attackRadius = 1f;
+
+        [Header("Additional")]
+        public float gold = 1f;
+        public float exp = 1f;
 
     }
 
@@ -200,7 +205,10 @@ public class Character_Properties : MonoBehaviour
 
             luck = baseStats.luck + baseStats.luck,
 
-            attackRadius = baseStats.attackRadius
+            attackRadius = baseStats.attackRadius,
+            
+            gold = baseStats.gold,
+            exp = baseStats.exp
         };
 
         return s;
@@ -388,6 +396,13 @@ public class Character_Properties : MonoBehaviour
 
             case HeroStatType.AttackRadius:
                 baseStats.attackRadius += (baseStats.attackRadius / 100) *modifier.value;
+                break;
+
+            case HeroStatType.Gold:
+                baseStats.gold += (baseStats.gold / 100) * modifier.value;
+                break;
+            case HeroStatType.Expirience:
+                baseStats.exp += (baseStats.exp / 100) * modifier.value;
                 break;
             default:
                 throw new ArgumentOutOfRangeException();

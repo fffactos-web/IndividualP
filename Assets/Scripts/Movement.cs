@@ -101,6 +101,14 @@ public class Movement : MonoBehaviour
         Vector3 desiredVelocity = (camForward * moveVertical + camRight * moveHorizontal).normalized * targetSpeed;
         Vector3 moveDir = new Vector3(desiredVelocity.x, 0f, desiredVelocity.z);
 
+
+        Vector3 velocity = rb.velocity;
+        float airControl = stats != null ? stats.airControl : 0.35f;
+        float control = inAir ? airControl : 1f;
+
+        Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
+        horizontal = Vector3.Lerp(horizontal, moveDir, Time.deltaTime * 10f * acceleration * control);
+
         animator.SetBool("Run", isRunning);
 
 
@@ -144,7 +152,7 @@ public class Movement : MonoBehaviour
         if (grounded && rb.velocity.y > 1.0f) grounded = false;
 
         isWalking = moveHorizontal != 0 || moveVertical != 0;
-        animatorSpeed = horizontal.magnitude;
+        animatorSpeed = 1;
 
             animator.SetBool("Walk", isWalking);
         if (grounded)
@@ -160,12 +168,6 @@ public class Movement : MonoBehaviour
         if (inAir && rb.velocity.y > 0.3f)
             onTop = true;
 
-        Vector3 velocity = rb.velocity;
-        float airControl = stats != null ? stats.airControl : 0.35f;
-        float control = inAir ? airControl : 1f;
-
-        Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
-        horizontal = Vector3.Lerp(horizontal, moveDir, Time.deltaTime * 10f * acceleration * control);
         if(!isDashing)
             rb.velocity = new Vector3(horizontal.x, velocity.y, horizontal.z);
 
