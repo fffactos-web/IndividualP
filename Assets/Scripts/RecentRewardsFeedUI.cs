@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class RecentRewardsFeedUI : MonoBehaviour
 {
@@ -48,21 +49,35 @@ public class RecentRewardsFeedUI : MonoBehaviour
         if (string.IsNullOrWhiteSpace(message) || messagePrefab == null || messagesRoot == null)
             return;
 
-        for (int i = 0; i < messages.Count; i++)
-        {
-            FeedMessage existing = messages[i];
-            if (existing?.Rect == null)
-                continue;
+        bool useVerticalLayout = messagesRoot.GetComponent<VerticalLayoutGroup>() != null;
 
-            existing.Rect.DOKill();
-            existing.Rect.DOAnchorPos(existing.Rect.anchoredPosition + Vector2.up * verticalStep, shiftDuration).SetUpdate(true);
+        if (!useVerticalLayout)
+        {
+            for (int i = 0; i < messages.Count; i++)
+            {
+                FeedMessage existing = messages[i];
+                if (existing?.Rect == null)
+                    continue;
+
+                existing.Rect.DOKill();
+                existing.Rect.DOAnchorPos(existing.Rect.anchoredPosition + Vector2.up * verticalStep, shiftDuration).SetUpdate(true);
+            }
         }
 
         TextMeshProUGUI label = Instantiate(messagePrefab, messagesRoot);
         label.text = message;
 
         RectTransform rect = label.rectTransform;
-        rect.anchoredPosition = Vector2.zero;
+
+        if (useVerticalLayout)
+        {
+            rect.SetAsFirstSibling();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(messagesRoot);
+        }
+        else
+        {
+            rect.anchoredPosition = Vector2.zero;
+        }
 
         CanvasGroup group = label.GetComponent<CanvasGroup>();
         if (group == null)
