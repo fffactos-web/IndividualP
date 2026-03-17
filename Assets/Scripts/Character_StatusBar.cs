@@ -50,6 +50,9 @@ public class Character_StatusBar : MonoBehaviour
             inventoryUI.GetComponent<AdaptiveGridFitter>().RebuildCells();
             inventory.Add(item, 1);
         }
+
+        if (RecentRewardsFeedUI.I != null)
+            RecentRewardsFeedUI.I.ShowItem(item);
     }
 
 }

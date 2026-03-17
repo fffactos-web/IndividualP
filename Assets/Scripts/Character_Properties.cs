@@ -407,6 +407,9 @@ public class Character_Properties : MonoBehaviour
             default:
                 throw new ArgumentOutOfRangeException();
         }
+
+        if (RecentRewardsFeedUI.I != null)
+            RecentRewardsFeedUI.I.ShowModifier(modifier);
     }
     void ApplyStatsToGun(Gun gun)
     {
