@@ -8,6 +8,7 @@ public class Shrine : MonoBehaviour
 
     private float progress;
     private bool isPlayerInside;
+    private bool completed;
 
     Character_Properties character_properties;
 
@@ -25,52 +26,63 @@ public class Shrine : MonoBehaviour
 
     void Update()
     {
-        if (isPlayerInside)
-            progress += Time.deltaTime / timeToComplete;
-        else
-            progress -= Time.deltaTime / timeToComplete;
-
-        progress = Mathf.Clamp01(progress);
-
-        UpdateVisual();
-
-        // Завершение
-        if (progress >= 1f)
+        if (!completed)
         {
-            switch (type)
+            if (isPlayerInside)
+                progress += Time.deltaTime / timeToComplete;
+            else
+                progress -= Time.deltaTime / timeToComplete;
+
+            progress = Mathf.Clamp01(progress);
+
+            UpdateVisual();
+
+            // Завершение
+            if (progress >= 1f)
             {
-                case ShrineType.Russian:
-                    character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.CritDamageMultiplier, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
-                    break;
-                case ShrineType.Math:
-                    character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.Damage, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
-                    break;
-                case ShrineType.Physics:
-                    character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.AttackSpeed, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
-                    break;
-                case ShrineType.Literature:
-                    character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.Gold, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
-                    break;
-                case ShrineType.Chemistry:
-                    character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.HealthRegen, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
-                    break;
-                case ShrineType.History:
-                    character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.Expirience, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
-                    break;
-                default:
-                    break;
+                switch (type)
+                {
+                    case ShrineType.Russian:
+                        character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.CritDamageMultiplier, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
+                        break;
+                    case ShrineType.Math:
+                        character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.Damage, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
+                        break;
+                    case ShrineType.Physics:
+                        character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.AttackSpeed, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
+                        break;
+                    case ShrineType.Literature:
+                        character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.Gold, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
+                        break;
+                    case ShrineType.Chemistry:
+                        character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.HealthRegen, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
+                        break;
+                    case ShrineType.History:
+                        character_properties.ApplyModifier(new HeroStatModifier { stat = HeroStatType.Expirience, value = Random.Range(5, 15) + (int)character_properties.GetStats().luck / 2 });
+                        break;
+                    default:
+                        break;
+                }
+
+                character_properties.ChangeGunProperties();
+
+                //completed = true;
+                material.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0);
+
             }
-            
         }
     }
 
     private void UpdateVisual()
     {
-        float alpha = progress * 0.8f;
-        material.color = new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
+        if (!completed)
+        {
+            float alpha = progress * 0.8f;
+            material.color = new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
 
-        float scale = 30f + progress * 10f;
-        transform.localScale = Vector3.one * scale;
+            float scale = 30f + progress * 10f;
+            transform.localScale = Vector3.one * scale;
+        }
     }
 
     private void OnTriggerEnter(Collider other)
@@ -81,9 +93,13 @@ public class Shrine : MonoBehaviour
 
     private void OnTriggerStay(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (!completed)
         {
-            isPlayerInside = true;
+            if (other.CompareTag("Player"))
+            {
+                isPlayerInside = true;
+            }
+
         }
     }
 
